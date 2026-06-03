@@ -1,0 +1,7 @@
+node_modules/
+.system_generated/
+*.cer
+err.txt
+out.txt
+.DS_Store
+Thumbs.db

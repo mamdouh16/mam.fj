@@ -1,0 +1,24 @@
+{
+  "name": "ألعاب الزمن الجميل | محاكي الألعاب المتكامل",
+  "short_name": "ألعاب الزمن الجميل",
+  "description": "محاكي وبوابة ألعاب بلايستيشن المتكاملة مع قاعدة بيانات آمنة ودخول بيومتري.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#08090d",
+  "theme_color": "#ff5e97",
+  "icons": [
+    {
+      "src": "logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

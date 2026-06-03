@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>ألعاب الزمن الجميل | محاكي الألعاب المتكامل</title>
+  <meta name="description" content="محاكي وبوابة ألعاب بلايستيشن المتكاملة مع قاعدة بيانات آمنة ودخول بيومتري.">
+  <link rel="stylesheet" href="style.css?v=3.0">
+  <link rel="manifest" href="manifest.json">
+
+</head>
+<body class="theme-midnight">
+
+  <!-- HIGH-SECURITY MGE GLASSMORPHIC LOGIN/REGISTER OVERLAY (EXACT USER DESIGN MOCKUP) -->
+  <div class="login-overlay active" id="auth-layer">
+    
+    <!-- Left Card: Sign In (تسجيل الدخول) with Blue Neon Glow -->
+    <div class="login-card card-blue-glow active" id="mge-login-card">
+      <!-- MGE Logo -->
+      <div class="mge-logo-wrapper">
+        <img src="logo.jpg" alt="the_good_old_days" class="site-logo-img">
+      </div>
+      
+      <h2 class="form-title">تسجيل الدخول</h2>
+      
+      <div class="form-box">
+        <div class="input-container">
+          <span class="input-icon">👤</span>
+          <input type="text" id="login-username" style="text-align: right;" placeholder="اسم المستخدم">
+        </div>
+        
+        <div class="input-container">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="login-password" style="text-align: right;" placeholder="كلمة المرور">
+        </div>
+
+        <div style="text-align: right; width: 100%; margin-top: -0.5rem; display: flex; justify-content: space-between; align-items: center; padding: 0 0.5rem;">
+          <a href="#" class="form-link" onclick="alert('للحصول على صلاحيات الإدارة، يرجى إدخال اسم المستخدم وكلمة المرور الإدارية الخاصة بك.')">نسيت كلمة المرور؟</a>
+          <span style="font-size: 0.72rem; color: #ffc02e;">دخول الزوار متاح بالأسفل ⬇️</span>
+        </div>
+
+        <!-- Hint Box for Guest Credentials -->
+        <div style="font-size: 0.76rem; color: #ffc02e; text-align: center; border: 1px dashed rgba(255, 192, 46, 0.4); padding: 0.5rem; border-radius: 12px; margin: 0.8rem 0; width: 100%; background: rgba(255, 192, 46, 0.04); font-family: 'Inter', sans-serif;">
+          🎮 <strong>للتجربة والدخول اليدوي:</strong><br>
+          اسم المستخدم: <code style="color: #fff; font-weight: bold; font-family: monospace;">guest</code> | كلمة المرور: <code style="color: #fff; font-weight: bold; font-family: monospace;">guest</code>
+        </div>
+
+        <button class="mge-btn mge-btn-blue" onclick="submitPasswordLogin()">تسجيل الدخول</button>
+        
+        <!-- Separate Passwordless Guest Trial Login Button -->
+        <button class="mge-btn mge-btn-orange" onclick="submitGuestTrialLogin()" style="margin-top: 0.4rem;">⚡ دخول تجريبي سريع (بدون كلمة مرور)</button>
+        
+        <!-- Windows Hello Biometric quick login -->
+        <button class="mge-btn mge-btn-green" id="btn-biometric-login" onclick="submitBiometricLogin()" style="margin-top: 0.2rem; display: none;">🛡️ دخول سريع بأمان الجهاز (Windows Hello)</button>
+        
+        <div style="margin-top: 1.5rem;">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">ليس لديك حساب؟</span>
+          <button class="mge-btn-outline" onclick="toggleAuthForm('register')">إنشاء حساب جديد</button>
+        </div>
+        <div style="margin-top: 1rem;">
+          <a href="#" onclick="showTermsModal(); event.preventDefault();" style="font-size: 0.7rem; color: var(--text-muted); text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#ff5e97'" onmouseout="this.style.color='var(--text-muted)'">⚖️ الشروط والأحكام وسياسة الخصوصية</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Card: Sign Up (إنشاء حساب جديد) with Green Neon Glow -->
+    <div class="login-card card-green-glow" id="mge-register-card" style="display: none;">
+      <!-- MGE Logo in Green -->
+      <div class="mge-logo-wrapper logo-green">
+        <img src="logo.jpg" alt="the_good_old_days" class="site-logo-img">
+      </div>
+      
+      <h2 class="form-title">إنشاء حساب جديد</h2>
+      
+      <div class="form-box">
+        <div class="input-container">
+          <span class="input-icon">👤</span>
+          <input type="text" id="reg-username" style="text-align: right;" placeholder="اسم المستخدم">
+        </div>
+
+        <div class="input-container">
+          <span class="input-icon">✉️</span>
+          <input type="email" id="reg-email" style="text-align: right;" placeholder="البريد الإلكتروني">
+        </div>
+        
+        <div class="input-container">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="reg-password" style="text-align: right;" placeholder="كلمة المرور">
+        </div>
+
+        <div class="input-container">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="reg-password-confirm" style="text-align: right;" placeholder="تأكيد كلمة المرور">
+        </div>
+
+        <div class="terms-inline-box" style="width: 100%; text-align: right; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.8rem; border-radius: 12px; font-size: 0.72rem; color: var(--text-muted); max-height: 100px; overflow-y: auto; margin-bottom: 0.5rem; direction: rtl; line-height: 1.5;">
+          <strong style="color: #00ff66;">⚖️ شروط الخدمة وسياسة الخصوصية العامة:</strong><br>
+          1. <strong>الأهلية والقبول</strong>: استخدامك للخدمة أو إنشاء حساب يمثل موافقة قانونية كاملة على البنود والشروط التنظيمية العامة للمواقع.<br>
+          2. <strong>حماية البيانات والخصوصية</strong>: نلتزم بأعلى معايير حماية البيانات والخصوصية وحفظ كلمات المرور بشكل آمن وتوفير الدخول السريع محلياً بالكامل على جهازك الخاص دون مشاركته مع الخادم.<br>
+          3. <strong>الاستخدام المقبول</strong>: يُحظر تماماً محاولات الاختراق، الهجمات السيبرانية، الوصول غير المصرح به، أو رفع أي ملفات تنتهك حقوق الملكية الفكرية وحقوق الطبع والنشر للغير.<br>
+          4. <strong>إخلاء المسؤولية</strong>: تُقدم الخدمة "كما هي" دون ضمانات لخلوها من الأخطاء التقنية أو ضمان استعادة ملفات الحفظ التالفة.
+        </div>
+
+        <div style="text-align: right; width: 100%; display: flex; align-items: center; gap: 0.5rem; padding: 0 0.5rem;">
+          <input type="checkbox" id="reg-terms" style="accent-color: var(--success-color); width: 16px; height: 16px;">
+          <span id="label-reg-terms" style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;">أوافق على <a href="#" class="form-link" id="link-reg-terms">الشروط والأحكام</a></span>
+        </div>
+
+        <button class="mge-btn mge-btn-green" onclick="submitRegistration()">إنشاء حساب جديد</button>
+        
+        <div style="margin-top: 1.5rem;">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">لديك حساب بالفعل؟</span>
+          <button class="mge-btn-outline" onclick="toggleAuthForm('login')">تسجيل الدخول</button>
+        </div>
+        <div style="margin-top: 1rem;">
+          <a href="#" onclick="showTermsModal(); event.preventDefault();" style="font-size: 0.7rem; color: var(--text-muted); text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#00ff66'" onmouseout="this.style.color='var(--text-muted)'">⚖️ الشروط والأحكام وسياسة الخصوصية</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="logo-container">
+      <img src="logo.jpg" alt="the_good_old_days" class="header-logo-img">
+      <div>
+        <h1 class="logo-text" id="app-title">the_good_old_days</h1>
+        <div class="logo-sub">HIGH-SECURITY SYSTEM</div>
+      </div>
+    </div>
+    <nav>
+      <button class="nav-btn active" id="btn-tab-emulator" onclick="switchTab('emulator')">
+        🎮 المحاكي وقاعدة البيانات
+      </button>
+      <button class="nav-btn" id="btn-tab-downloads" onclick="switchTab('downloads')">
+        📥 مركز ألعاب بلايستيشن
+      </button>
+      <button class="nav-btn" id="btn-tab-profile" onclick="switchTab('profile')">
+        👤 الملف الشخصي
+      </button>
+      <button class="nav-btn" id="btn-tab-ai" onclick="switchTab('ai')">
+        🧠 المساعد الذكي
+      </button>
+    </nav>
+    <button class="logout-header-btn" onclick="submitLogout()" id="header-logout-btn" style="display: none;">
+      🚪 تسجيل الخروج
+    </button>
+  </header>
+
+  <main class="main-viewport">
+    
+    <!-- Tab 1: Live PS1 Emulator Console -->
+    <div id="tab-emulator" class="tab-content active">
+      <div class="console-wrapper skin-classic" id="console-shell">
+        
+        <!-- Shoulder Bumpers L1/R1 (Touch / Clickable) -->
+        <div class="shoulder-btns">
+          <button class="shoulder-btn" id="btn-L1" data-btn="L1">L1</button>
+          <button class="shoulder-btn" id="btn-R1" data-btn="R1">R1</button>
+        </div>
+
+        <!-- Top Bar with status & led -->
+        <div class="console-topbar">
+          <div class="console-brand">
+            <span>MGE EMULATOR CORE</span>
+          </div>
+          <div class="power-indicator">
+            <span id="power-status-label">OFF</span>
+            <div class="led" id="power-led"></div>
+          </div>
+        </div>
+
+        <!-- Monitor Screen Bezel -->
+        <div class="console-screen-frame">
+          <div class="console-screen">
+            
+            <!-- Shaders & Curvatures -->
+            <div class="crt-overlay" id="crt-shader"></div>
+            <div class="crt-curvature"></div>
+            <div class="screen-glow" id="screen-glare"></div>
+
+            <!-- Standby Display (Power Off state) -->
+            <div class="standby-screen" id="standby-layer">
+              <div class="standby-instructions">
+                <p>اضغط زر الطاقة لتشغيل جهاز الألعاب</p>
+                <div class="power-btn-glow" id="power-switch" onclick="togglePower()">
+                  🔌
+                </div>
+              </div>
+            </div>
+
+            <!-- Boot Screen 1: Sony Interactive -->
+            <div class="boot-layer sony-boot" id="boot-sony">
+              <div class="sony-logo-wrapper">
+                <div class="sony-diamond"></div>
+                <div>
+                  <h2 class="sony-text">SONY</h2>
+                  <div class="sony-subtext">COMPUTER ENTERTAINMENT</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Boot Screen 2: PlayStation Logo -->
+            <div class="boot-layer ps-boot" id="boot-ps">
+              <div class="ps-logo-full">
+                <div class="ps-symbol">PS</div>
+                <div class="ps-license-text">
+                  SERVER PORTAL ACTIVE<br>
+                  DATABASE SECURE PERSISTENT SAVES<br>
+                  <span style="color: #ff5e97; font-weight: bold;">MGE DB ENGINE VERSION 2.5</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Playable Game View -->
+            <div class="game-canvas-wrapper" id="game-layer">
+              <canvas id="emulator-canvas"></canvas>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Front Physical Game Controllers -->
+        <div class="controllers-section">
+          
+          <!-- D-PAD (Left Side) -->
+          <div class="dpad-container">
+            <div class="dpad">
+              <button class="dpad-btn dpad-up" data-btn="up" title="فوق"></button>
+              <button class="dpad-btn dpad-down" data-btn="down" title="تحت"></button>
+              <button class="dpad-btn dpad-left" data-btn="left" title="يسار"></button>
+              <button class="dpad-btn dpad-right" data-btn="right" title="يمين"></button>
+              <div class="dpad-center"></div>
+            </div>
+          </div>
+
+          <!-- Select / Start Buttons (Center Bottom) -->
+          <div class="system-btns">
+            <div class="sys-btn-wrapper">
+              <button class="sys-btn" id="btn-select" data-btn="select" title="Select"></button>
+              <span class="sys-btn-label">SELECT</span>
+            </div>
+            <div class="sys-btn-wrapper">
+              <button class="sys-btn" id="btn-start" data-btn="start" title="Start"></button>
+              <span class="sys-btn-label">START</span>
+            </div>
+          </div>
+
+          <!-- PlayStation Interactive Action Buttons (Right Side) -->
+          <div class="actions-container">
+            <div class="action-pad">
+              <!-- Triangle (Top) -->
+              <button class="action-btn btn-triangle" data-btn="triangle" title="مثلث (▲)">▲</button>
+              <!-- Circle (Right) -->
+              <button class="action-btn btn-circle" data-btn="circle" title="دائرة (●)">●</button>
+              <!-- Cross (Bottom) -->
+              <button class="action-btn btn-cross" data-btn="cross" title="إكس (✖)">✖</button>
+              <!-- Square (Left) -->
+              <button class="action-btn btn-square" data-btn="square" title="مربع (■)">■</button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Dashboard below the console -->
+      <div class="dashboard-grid">
+        
+        <!-- Dashboard Card 1: Console Customization & ROM Server Uploader -->
+        <div class="card-panel">
+          <div class="panel-header">
+            <span>⚙️ إعدادات الجهاز وأمان السيرفر</span>
+            <span class="panel-icon">🔧</span>
+          </div>
+          
+          <div class="settings-list">
+            <!-- Theme Selection -->
+            <div class="setting-item">
+              <span class="setting-label">لون هيكل الجهاز (Theme)</span>
+              <div class="selector-group" id="theme-selector">
+                <button class="selector-option" onclick="changeTheme('midnight')">كلاسيك رمادي</button>
+                <button class="selector-option active" onclick="changeTheme('classic')">أسود نيون</button>
+                <button class="selector-option" onclick="changeTheme('translucent-blue')">أزرق شفاف</button>
+                <button class="selector-option" onclick="changeTheme('neon-purple')">بنفسجي نيون</button>
+                <button class="selector-option" onclick="changeTheme('cyberpunk')">سايبربانك 🍊</button>
+                <button class="selector-option" onclick="changeTheme('matrix')">ماتريكس 💚</button>
+                <button class="selector-option" onclick="changeTheme('sunset')">شفق الغروب 🌅</button>
+              </div>
+            </div>
+
+            <!-- Controller Skin Selection -->
+            <div class="setting-item">
+              <span class="setting-label">شكل وتصميم يد التحكم (Controller Skin)</span>
+              <div class="selector-group" id="skin-selector">
+                <button class="selector-option active" onclick="changeSkin('classic')">كلاسيك</button>
+                <button class="selector-option" onclick="changeSkin('neon')">نيون مضيء</button>
+                <button class="selector-option" onclick="changeSkin('wood')">خشب عتيق</button>
+                <button class="selector-option" onclick="changeSkin('crystal')">زجاج شفاف</button>
+              </div>
+            </div>
+
+            <!-- Startup Boot Sound Selection -->
+            <div class="setting-item">
+              <span class="setting-label">صوت شاشة الإقلاع (Startup Boot Sound)</span>
+              <div class="selector-group" id="bootsound-selector">
+                <button class="selector-option active" onclick="changeBootSound('ps1')">كلاسيك PS1</button>
+                <button class="selector-option" onclick="changeBootSound('ps2')">عميق PS2</button>
+                <button class="selector-option" onclick="changeBootSound('psp')">نغمة PSP</button>
+                <button class="selector-option" onclick="changeBootSound('ps3')">أوركسترا PS3</button>
+              </div>
+            </div>
+
+            <!-- CRT scanline overlay toggle -->
+            <div class="setting-item">
+              <span class="setting-label">شاشة التلفزيون الكلاسيكية (CRT TV Filter)</span>
+              <div class="selector-group" id="crt-selector">
+                <button class="selector-option active" onclick="toggleCRT(true)">مفعّل</button>
+                <button class="selector-option" onclick="toggleCRT(false)">معطّل</button>
+              </div>
+            </div>
+
+            <!-- Volume control -->
+            <div class="setting-item">
+              <span class="setting-label">صوت الإقلاع والمؤثرات</span>
+              <input type="range" id="volume-range" min="0" max="100" value="80" style="width: 120px; accent-color: var(--accent-color);">
+            </div>
+            
+            <!-- Retro Background Music -->
+            <div class="setting-item">
+              <span class="setting-label">موسيقى الخلفية الريترو (8-Bit BGM)</span>
+              <div class="selector-group" id="bgm-selector">
+                <button class="selector-option" onclick="toggleBGM(true)">مفعّل 🎵</button>
+                <button class="selector-option active" onclick="toggleBGM(false)">معطّل 🔇</button>
+              </div>
+            </div>
+
+            <!-- Gamepad Rumble -->
+            <div class="setting-item">
+              <span class="setting-label">اهتزاز ذراع التحكم (Gamepad Rumble)</span>
+              <div class="selector-group" id="rumble-selector">
+                <button class="selector-option active" onclick="toggleRumble(true)">مفعّل 📳</button>
+                <button class="selector-option" onclick="toggleRumble(false)">معطّل ✖</button>
+              </div>
+            </div>
+            <!-- Virtual Controller visibility toggle -->
+            <div class="setting-item">
+              <span class="setting-label">أزرار التحكم الافتراضية (Virtual Controller)</span>
+              <div class="selector-group" id="controller-visibility-selector">
+                <button class="selector-option" id="btn-show-controller" onclick="toggleVirtualController(true)">مفعّل 🎮</button>
+                <button class="selector-option" id="btn-hide-controller" onclick="toggleVirtualController(false)">معطّل ✖</button>
+              </div>
+            </div>
+
+            <!-- Biometric Toggle inside settings -->
+            <div class="setting-item" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.8rem; margin-top: 0.5rem;">
+              <span class="setting-label" style="color: #fff;">🔒 أمان ودخول سريع بيومتري</span>
+              <button class="selector-option" id="btn-register-biometric" onclick="registerBiometrics()" style="background: var(--accent-color); color: #fff; font-size: 0.7rem; border-radius: 8px; cursor: pointer; border: none; padding: 0.4rem 0.8rem; font-weight: 700;">ربط بصمة الجهاز 🛡️</button>
+            </div>
+          </div>
+
+          <!-- Drag and Drop ROM box to upload to server -->
+          <div class="uploader-box" onclick="triggerRomUpload()">
+            <input type="file" id="rom-file-input" style="display: none;" accept=".bin,.cue,.iso,.img,.zip">
+            <div class="uploader-icon">💿</div>
+            <div class="uploader-text">ارفع ألعابك المفضلة (ROMs) لحفظها في خادم قاعدة البيانات الخاصة بك للأبد!</div>
+          </div>
+        </div>
+
+        <!-- Dashboard Card 2: Server Persistent Memory Card -->
+        <div class="card-panel">
+          <div class="panel-header">
+            <span>💾 كرت الذاكرة السحابي (Server DB Memory Card)</span>
+            <span class="panel-icon">📂</span>
+          </div>
+          
+          <p class="setting-label" style="margin-bottom: 0.8rem; line-height: 1.5;">
+            تتكون بطاقة الذاكرة من 15 خانة للحفظ (Blocks). سيقوم الخادم بحفظ ملفاتك تلقائياً وبشكل دائم في ملف قاعدة بيانات `database.json`!
+          </p>
+
+          <div class="memory-card-grid" id="mem-card-container" style="margin-bottom: 1.2rem;">
+            <!-- 15 blocks rendered dynamically by JS -->
+          </div>
+
+          <!-- Uploaded Roms Library on Server -->
+          <div class="panel-header" style="font-size: 0.95rem; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.8rem; margin-bottom: 0.6rem;">
+            <span>📀 مكتبة الألعاب المرفوعة على الخادم</span>
+          </div>
+          <div id="server-roms-list" style="max-height: 100px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem;">
+            <div class="setting-label" style="text-align: center; padding: 0.5rem; color: var(--text-muted);">لا توجد ألعاب مرفوعة حالياً. ارفع أول ألعابك!</div>
+          </div>
+          
+          <!-- TEST GAME DOWNLOAD BUTTON -->
+          <div style="margin-top: 1.2rem; text-align: center;">
+            <a href="https://github.com/Lameguy64/PSX-SDK/raw/master/examples/hello/hello.exe" download="test_game.bin" class="download-action-btn" style="text-decoration: none; font-size: 0.75rem; background: linear-gradient(135deg, var(--accent-color), #2979ff);" onclick="playBeepSound(400, 0.05);">⚡ تنزيل ملف لعبة تجريبية حقيقية (.bin) لتجربة الرفع</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Tab 2: Multiverse Downloads Hub -->
+    <div id="tab-downloads" class="tab-content">
+      <div class="downloads-container">
+        
+        <div class="section-title-wrapper">
+          <h2 class="section-title">مركز تحميل محاكيات PlayStation</h2>
+          <p class="section-subtitle">الجيل القادم من المتعة في متناول يدك</p>
+        </div>
+
+        <div class="downloads-grid">
+          
+          <!-- Console Card: PS2 -->
+          <div class="console-card">
+            <span class="console-badge">الأكثر طلباً</span>
+            <div class="card-icon-big">📀</div>
+            <h3 class="console-card-name">PlayStation 2 (PS2)</h3>
+            <p class="console-card-sub">محاكيات خارقة لهاتفك والكمبيوتر الشخصي لتشغيل أساطير مثل GTA SA و Metal Gear Solid.</p>
+            <ul class="features-list">
+              <li class="feature-pill">محاكي NetherSX2/AetherSX2 للهواتف الذكية</li>
+              <li class="feature-pill">محاكي PCSX2 الشهير لأجهزة الويندوز والماك</li>
+            </ul>
+            <div class="platforms-container">
+              <span class="platform-chip platform-android">Android</span>
+              <span class="platform-chip platform-windows">Windows</span>
+            </div>
+            <!-- Direct server downloads! -->
+            <button class="download-action-btn btn-platform-android" onclick="downloadLocalApp('AetherSX2_PS2_Android.apk')" style="margin-bottom: 0.5rem; background: linear-gradient(135deg, #00ff66, #0078d7);">📥 تحميل التطبيق محلياً (أندرويد)</button>
+            <button class="download-action-btn btn-platform-windows" onclick="downloadLocalApp('PCSX2_PS2_Windows.exe')" style="margin-bottom: 0.5rem; background: linear-gradient(135deg, #ffc02e, #0078d7);">📥 تحميل التطبيق محلياً (ويندوز)</button>
+            <button class="download-action-btn" onclick="openDownloadLink('ps2')">🔗 الموقع الرسمي الخارجي</button>
+            <button class="card-guide-btn" onclick="showGuide('ps2')">📖 دليل تشغيل ألعاب PS2 خطوة بخطوة</button>
+          </div>
+
+          <!-- Console Card: PSP -->
+          <div class="console-card">
+            <span class="console-badge" style="background: #2979ff;">سرعة فائقة</span>
+            <div class="card-icon-big">📟</div>
+            <h3 class="console-card-name">PlayStation Portable (PSP)</h3>
+            <p class="console-card-sub">عش تجربة المحمول الأسطورية مع ألعاب كاملة تعمل بسرعة 60 إطار في الثانية حتى على الهواتف الضعيفة.</p>
+            <ul class="features-list">
+              <li class="feature-pill">محاكي PPSSPP الحائز على جوائز عالمية</li>
+              <li class="feature-pill">دعم كامل للغة العربية وتخصيص الأزرار</li>
+            </ul>
+            <div class="platforms-container">
+              <span class="platform-chip platform-android">Android</span>
+              <span class="platform-chip platform-ios">iOS</span>
+              <span class="platform-chip platform-windows">Windows</span>
+            </div>
+            <!-- Direct server downloads! -->
+            <button class="download-action-btn btn-platform-android" onclick="downloadLocalApp('PPSSPP_PSP_Android.apk')" style="margin-bottom: 0.5rem; background: linear-gradient(135deg, #00ff66, #0078d7);">📥 تحميل التطبيق محلياً (أندرويد)</button>
+            <button class="download-action-btn" onclick="openDownloadLink('psp')">🔗 الموقع الرسمي الخارجي</button>
+            <button class="card-guide-btn" onclick="showGuide('psp')">📖 دليل تشغيل ألعاب PSP خطوة بخطوة</button>
+          </div>
+
+          <!-- Console Card: PS3 -->
+          <div class="console-card">
+            <span class="console-badge" style="background: #e040fb;">مواصفات عالية</span>
+            <div class="card-icon-big">🎮</div>
+            <h3 class="console-card-name">PlayStation 3 (PS3)</h3>
+            <p class="console-card-sub">محاكي RPCS3 الجبار لتشغيل ألعاب PS3 الأسطورية مثل Demon's Souls و Metal Gear Solid 4 بدقة 4K.</p>
+            <ul class="features-list">
+              <li class="feature-pill">محاكي RPCS3 الرائد للكمبيوتر</li>
+            </ul>
+            <div class="platforms-container">
+              <span class="platform-chip platform-windows">Windows</span>
+            </div>
+            <!-- Direct server downloads! -->
+            <button class="download-action-btn btn-platform-windows" onclick="downloadLocalApp('RPCS3_PS3_Windows.zip')" style="margin-bottom: 0.5rem; background: linear-gradient(135deg, #e040fb, #0078d7);">📥 تحميل التطبيق محلياً (ويندوز)</button>
+            <button class="download-action-btn" onclick="openDownloadLink('ps3')">🔗 الموقع الرسمي الخارجي</button>
+            <button class="card-guide-btn" onclick="showGuide('ps3')">📖 دليل تشغيل ألعاب PS3 خطوة بخطوة</button>
+          </div>
+
+        </div> <!-- end downloads-grid -->
+
+        <!-- MGE RETRO GAME STORE SECTION -->
+        <div class="section-title-wrapper" style="margin-top: 3.5rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 2rem;">
+          <h2 class="section-title">📀 متجر ألعاب الزمن الجميل الكلاسيكية المجانية (Retro Game Store)</h2>
+          <p class="section-subtitle">قم بتنزيل وإضافة الألعاب الكاملة مباشرة إلى خادم مكتبة المحاكي السحابية الخاصة بك بنقرة واحدة!</p>
+        </div>
+
+        <div class="downloads-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-top: 1.5rem;">
+          
+          <!-- Store Card 1 -->
+          <div class="console-card" style="border-color: rgba(0, 255, 102, 0.25); background: rgba(0,0,0,0.3); padding: 1.5rem; border-radius: 20px;">
+            <span class="console-badge" style="background: linear-gradient(135deg, #00ff66, #0078d7);">كاملة ومجانية</span>
+            <div class="card-icon-big">🧱</div>
+            <h3 class="console-card-name" style="font-size: 1.1rem; margin-top: 0.8rem; color: #fff;">µCity PSX</h3>
+            <p class="console-card-sub" style="font-size: 0.8rem; min-height: 50px; color: var(--text-muted);">لعبة بناء مدن ريترو استراتيجية كاملة ومفتوحة المصدر مصممة خصيصاً لجهاز PlayStation 1.</p>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 1rem; text-align: right;">
+              <div>📂 الحجم: <strong>2.4 MB</strong></div>
+              <div>📀 التنسيق: <strong>ROM Image (.bin)</strong></div>
+            </div>
+            <button class="download-action-btn" onclick="installStoreGame('store_game_1')" style="background: linear-gradient(135deg, #00ff66, #0078d7); font-size: 0.8rem;">💿 إضافة للمحاكي فوراً</button>
+          </div>
+
+          <!-- Store Card 2 -->
+          <div class="console-card" style="border-color: rgba(255, 61, 0, 0.25); background: rgba(0,0,0,0.3); padding: 1.5rem; border-radius: 20px;">
+            <span class="console-badge" style="background: linear-gradient(135deg, #ff3d00, #ff5e97);">لعبة أكشن</span>
+            <div class="card-icon-big">🔫</div>
+            <h3 class="console-card-name" style="font-size: 1.1rem; margin-top: 0.8rem; color: #fff;">PSX Doom (Retro Demo)</h3>
+            <p class="console-card-sub" style="font-size: 0.8rem; min-height: 50px; color: var(--text-muted);">لعبة قلاف الشياطين الكلاسيكية الشهيرة ثلاثية الأبعاد كاملة الأطوار المهيأة للمحاكي.</p>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 1rem; text-align: right;">
+              <div>📂 الحجم: <strong>4.1 MB</strong></div>
+              <div>📀 التنسيق: <strong>ROM Image (.bin)</strong></div>
+            </div>
+            <button class="download-action-btn" onclick="installStoreGame('store_game_2')" style="background: linear-gradient(135deg, #ff3d00, #ff5e97); font-size: 0.8rem;">💿 إضافة للمحاكي فوراً</button>
+          </div>
+
+          <!-- Store Card 3 -->
+          <div class="console-card" style="border-color: rgba(41, 121, 255, 0.25); background: rgba(0,0,0,0.3); padding: 1.5rem; border-radius: 20px;">
+            <span class="console-badge" style="background: linear-gradient(135deg, #2979ff, #e040fb);">مغامرات منصات</span>
+            <div class="card-icon-big">👦</div>
+            <h3 class="console-card-name" style="font-size: 1.1rem; margin-top: 0.8rem; color: #fff;">Super Block Boy</h3>
+            <p class="console-card-sub" style="font-size: 0.8rem; min-height: 50px; color: var(--text-muted);">لعبة مغامرات ومنصات ممتعة لتخطي الحواجز وجمع العملات المعدنية الكلاسيكية.</p>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 1rem; text-align: right;">
+              <div>📂 الحجم: <strong>1.8 MB</strong></div>
+              <div>📀 التنسيق: <strong>ROM Image (.bin)</strong></div>
+            </div>
+            <button class="download-action-btn" onclick="installStoreGame('store_game_3')" style="background: linear-gradient(135deg, #2979ff, #e040fb); font-size: 0.8rem;">💿 إضافة للمحاكي فوراً</button>
+          </div>
+
+          <!-- Store Card 4 -->
+          <div class="console-card" style="border-color: rgba(255, 192, 46, 0.25); background: rgba(0,0,0,0.3); padding: 1.5rem; border-radius: 20px;">
+            <span class="console-badge" style="background: linear-gradient(135deg, #ffc02e, #ff5e97);">قتال فضائي</span>
+            <div class="card-icon-big">🚀</div>
+            <h3 class="console-card-name" style="font-size: 1.1rem; margin-top: 0.8rem; color: #fff;">Hubble Space Hunter</h3>
+            <p class="console-card-sub" style="font-size: 0.8rem; min-height: 50px; color: var(--text-muted);">محاكاة قيادة سفينة فضاء ثلاثية الأبعاد وملاحقة الأهداف في مجرة درب التبانة.</p>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 1rem; text-align: right;">
+              <div>📂 الحجم: <strong>1.2 MB</strong></div>
+              <div>📀 التنسيق: <strong>ROM Image (.bin)</strong></div>
+            </div>
+            <button class="download-action-btn" onclick="installStoreGame('store_game_4')" style="background: linear-gradient(135deg, #ffc02e, #ff5e97); font-size: 0.8rem;">💿 إضافة للمحاكي فوراً</button>
+          </div>
+
+          <!-- Store Card 5 -->
+          <div class="console-card" style="border-color: rgba(0, 229, 255, 0.25); background: rgba(0,0,0,0.3); padding: 1.5rem; border-radius: 20px;">
+            <span class="console-badge" style="background: linear-gradient(135deg, #00e5ff, #0078d7);">سباق سيارات</span>
+            <div class="card-icon-big">🚗</div>
+            <h3 class="console-card-name" style="font-size: 1.1rem; margin-top: 0.8rem; color: #fff;">Formula Retro GP</h3>
+            <p class="console-card-sub" style="font-size: 0.8rem; min-height: 50px; color: var(--text-muted);">لعبة سباق سيارات الفورمولا الكلاسيكية الرائعة مع تخصيص نيون وتنافس مذهل.</p>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 1rem; text-align: right;">
+              <div>📂 الحجم: <strong>3.2 MB</strong></div>
+              <div>📀 التنسيق: <strong>ROM Image (.bin)</strong></div>
+            </div>
+            <button class="download-action-btn" onclick="installStoreGame('store_game_5')" style="background: linear-gradient(135deg, #00e5ff, #0078d7); font-size: 0.8rem;">💿 إضافة للمحاكي فوراً</button>
+          </div>
+
+          <!-- Store Card 6 -->
+          <div class="console-card" style="border-color: rgba(224, 64, 251, 0.25); background: rgba(0,0,0,0.3); padding: 1.5rem; border-radius: 20px;">
+            <span class="console-badge" style="background: linear-gradient(135deg, #e040fb, #2979ff);">أداة نظام</span>
+            <div class="card-icon-big">💾</div>
+            <h3 class="console-card-name" style="font-size: 1.1rem; margin-top: 0.8rem; color: #fff;">Memory Card Tool</h3>
+            <p class="console-card-sub" style="font-size: 0.8rem; min-height: 50px; color: var(--text-muted);">الأداة الاحترافية لتهيئة وإدارة كروت الذاكرة السحابية وإفراغ مساحات التخزين.</p>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 1rem; text-align: right;">
+              <div>📂 الحجم: <strong>950 KB</strong></div>
+              <div>📀 التنسيق: <strong>Utility Image (.bin)</strong></div>
+            </div>
+            <button class="download-action-btn" onclick="installStoreGame('store_game_6')" style="background: linear-gradient(135deg, #e040fb, #2979ff); font-size: 0.8rem;">💿 إضافة للمحاكي فوراً</button>
+          </div>
+
+        </div> <!-- end downloads-grid -->
+      </div> <!-- end downloads-container -->
+    </div> <!-- end tab-downloads -->
+
+    <!-- Tab 3: Profile & Admin Management -->
+    <div id="tab-profile" class="tab-content">
+      <div class="dashboard-grid">
+        
+        <!-- Left Panel: Account Info & Admin System Management -->
+        <div class="card-panel">
+          <div class="panel-header">
+            <span>👤 معلومات الحساب الشخصي والتحكم</span>
+            <span class="panel-icon">⚙️</span>
+          </div>
+          
+          <!-- User Profile Details Card -->
+          <div class="profile-card-details" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 1.2rem; border-radius: 16px; margin-bottom: 1.5rem; text-align: right;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+              <div style="font-size: 2.2rem; background: var(--accent-color); width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 50%; box-shadow: 0 0 15px var(--accent-color);">👤</div>
+              <div>
+                <h3 id="profile-username-display" style="font-size: 1.2rem; margin: 0; color: #fff;">جاري التحميل...</h3>
+                <span id="profile-role-badge" class="role-badge" style="display: inline-block; font-size: 0.72rem; padding: 0.2rem 0.6rem; border-radius: 8px; font-weight: bold; margin-top: 0.3rem;">تحميل الرتبة...</span>
+              </div>
+            </div>
+            
+            <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.5rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.8rem;">
+              <div><strong>البريد الإلكتروني:</strong> <span id="profile-email-display" style="color: #fff;">-</span></div>
+              <div><strong>حالة الجلسة:</strong> <span style="color: #00ff66;">● آمنة ونشطة (Sliding Session)</span></div>
+              <div><strong>حالة الحماية:</strong> <span style="color: #00ff66;">مؤمنة بالكامل</span></div>
+              <div style="margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px dashed rgba(255,255,255,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                  <strong>شهادة التشفير (CA Certificate):</strong>
+                  <a href="/mallea_portal.cer" download="mallea_portal.cer" class="download-action-btn" style="padding: 0.35rem 0.8rem; font-size: 0.75rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; background: linear-gradient(135deg, #00e676, #00b0ff); color: white; border-radius: 8px; border: none; font-weight: bold; box-shadow: 0 0 10px rgba(0, 230, 118, 0.3); transition: all 0.2s; cursor: pointer;" onclick="playBeepSound(500, 0.05);">📥 تنزيل وتثبيت الشهادة</a>
+                </div>
+                <div style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.3;">
+                  💡 لتفعيل قفل الأمان الأخضر وميزات الحماية على هاتفك المحمول، قم بتنزيل الشهادة وتثبيتها كـ "شهادة مرجع مصدقة موثوق" (Trusted CA Certificate) من إعدادات الحماية بجهازك.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- USER PASSWORD CHANGE PANEL (Available to all logged-in users with account verification) -->
+          <div class="password-change-panel" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 1.2rem; border-radius: 16px; margin-bottom: 1.5rem; text-align: right;">
+            <div class="panel-header" style="font-size: 1rem; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
+              <span>🔒 تغيير كلمة المرور الخاصة بك</span>
+            </div>
+            
+            <div class="settings-list" style="margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.8rem;">
+              <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.4rem; border: none; padding: 0;">
+                <span class="setting-label">اسم الحساب / المستخدم (إجباري)</span>
+                <input type="text" id="user-change-username" placeholder="أدخل اسم حسابك تأكيداً للهوية" style="width: 100%; padding: 0.6rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+              </div>
+
+              <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.4rem; border: none; padding: 0;">
+                <span class="setting-label">كلمة المرور الحالية (للتحقق من الحساب)</span>
+                <input type="password" id="user-current-password" placeholder="أدخل كلمة المرور الحالية للتحقق" style="width: 100%; padding: 0.6rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+              </div>
+
+              <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.4rem; border: none; padding: 0;">
+                <span class="setting-label">كلمة المرور الجديدة</span>
+                <input type="password" id="user-new-password" placeholder="أدخل كلمة المرور الجديدة" style="width: 100%; padding: 0.6rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+              </div>
+              
+              <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.4rem; border: none; padding: 0;">
+                <span class="setting-label">تأكيد كلمة المرور الجديدة</span>
+                <input type="password" id="user-new-password-confirm" placeholder="تأكيد كلمة المرور الجديدة" style="width: 100%; padding: 0.6rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+              </div>
+              
+              <button class="mge-btn mge-btn-blue" onclick="changeUserPassword()" style="padding: 0.6rem; font-size: 0.85rem; border-radius: 12px; margin-top: 0.4rem;">🔒 تحديث كلمة المرور</button>
+            </div>
+          </div>
+
+          <!-- ADMIN ONLY CONFIGURATION PANEL (Toggled dynamically in JS) -->
+          <div id="admin-management-panel" style="display: none; border-top: 2px solid var(--accent-color); padding-top: 1.2rem; margin-top: 1rem;">
+            <div class="panel-header" style="font-size: 1rem; margin-bottom: 0.8rem;">
+              <span>👑 لوحة تحكم وإدارة النظام (خاص بالمسؤولين)</span>
+            </div>
+            
+            <!-- Admin Account Modification Fields -->
+            <div class="settings-list" style="margin-bottom: 1.2rem;">
+              <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.4rem; border: none; padding: 0;">
+                <span class="setting-label">تعديل البريد الإلكتروني الخاص بك</span>
+                <input type="email" id="admin-edit-email" placeholder="البريد الإلكتروني الجديد" style="width: 100%; padding: 0.6rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+              </div>
+              
+              <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.4rem; border: none; padding: 0; margin-top: 0.8rem;">
+                <span class="setting-label">تغيير كلمة المرور الإدارية</span>
+                <input type="password" id="admin-edit-password" placeholder="كلمة المرور الجديدة" style="width: 100%; padding: 0.6rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+              </div>
+              
+              <button class="mge-btn mge-btn-blue" onclick="saveAdminSettings()" style="padding: 0.6rem; font-size: 0.85rem; border-radius: 12px; margin-top: 0.8rem;">💾 حفظ التعديلات الإدارية</button>
+            </div>
+
+            <!-- Modify Portal Title -->
+            <div class="panel-header" style="font-size: 0.9rem; margin-bottom: 0.6rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.8rem; margin-top: 1rem;">
+              <span>⚙️ تعديل الإعدادات العامة للمحاكي</span>
+            </div>
+            <div class="settings-list" style="margin-bottom: 1.2rem;">
+              <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.4rem; border: none; padding: 0;">
+                <span class="setting-label">تعديل اسم البوابة (Portal Title)</span>
+                <input type="text" id="admin-edit-portal-name" placeholder="اسم البوابة الجديد (مثال: MGE STATION)" style="width: 100%; padding: 0.6rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+              </div>
+              <button class="mge-btn mge-btn-blue" onclick="savePortalName()" style="padding: 0.6rem; font-size: 0.85rem; border-radius: 12px; margin-top: 0.8rem;">💾 حفظ اسم المنصة الجديد</button>
+            </div>
+
+            <!-- List of All Registered Users seeded on Server -->
+            <div class="panel-header" style="font-size: 0.9rem; margin-bottom: 0.6rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.8rem;">
+              <span>👥 الحسابات المسجلة في خادم قاعدة البيانات</span>
+            </div>
+            <div id="admin-users-list" style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; padding: 0.2rem; margin-bottom: 1rem;">
+              <!-- Users populated dynamically by JS -->
+            </div>
+
+            <!-- Add Local Installed Apps -->
+            <div class="panel-header" style="font-size: 0.9rem; margin-bottom: 0.6rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.8rem;">
+              <span>📱 إدارة ألعاب وتطبيقات الجهاز المحلية</span>
+            </div>
+            <div class="settings-list" style="margin-bottom: 1.2rem;">
+              <div style="display: flex; flex-direction: column; gap: 0.6rem; width: 100%;">
+                <input type="text" id="admin-app-name" placeholder="اسم التطبيق/اللعبة (مثال: GTA SA)" style="width: 100%; padding: 0.6rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right; font-size: 0.8rem;">
+                <input type="text" id="admin-app-package" placeholder="حزمة التطبيق / Package ID (مثال: com.rockstargames.gtasa)" style="width: 100%; padding: 0.6rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right; font-size: 0.8rem;">
+                <div style="display: flex; gap: 0.5rem; width: 100%;">
+                  <input type="text" id="admin-app-icon" placeholder="أيقونة إيموجي (مثال: 🚗)" style="flex: 1; padding: 0.6rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right; font-size: 0.8rem; min-width: 0;">
+                  <select id="admin-app-platform" style="flex: 1; padding: 0.6rem; border-radius: 8px; background: rgba(13, 17, 24, 0.95); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right; font-size: 0.8rem; min-width: 0;">
+                    <option value="Android">Android (أندرويد)</option>
+                    <option value="Windows">Windows (ويندوز)</option>
+                  </select>
+                </div>
+                <button onclick="addLocalApp()" class="mge-btn mge-btn-green" style="padding: 0.6rem; font-size: 0.85rem; border-radius: 12px; margin-top: 0.4rem; color: #051005;">➕ إضافة تطبيق/لعبة للجهاز</button>
+              </div>
+            </div>
+            <div class="panel-header" style="font-size: 0.85rem; margin-bottom: 0.6rem;">
+              <span>قائمة تطبيقات الجهاز المضافة حالياً</span>
+            </div>
+            <div id="admin-local-apps-list" style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; padding: 0.2rem; margin-bottom: 1rem;">
+              <!-- Apps list with delete button, populated dynamically by JS -->
+            </div>
+          </div>
+
+          <!-- LOGOUT BUTTON -->
+          <button class="mge-btn" onclick="submitLogout()" style="background: linear-gradient(135deg, #ff3d00, #ff5e97); box-shadow: 0 5px 20px rgba(255, 61, 0, 0.3); margin-top: 2rem;">🚪 تسجيل الخروج من البوابة</button>
+        </div>
+
+        <!-- Right Panel: Personal Saves and ROMs Library -->
+        <div class="card-panel">
+          <div class="panel-header">
+            <span>💾 ملفات التخزين والألعاب السحابية الخاصة بك</span>
+            <span class="panel-icon">📂</span>
+          </div>
+          
+          <p class="setting-label" style="margin-bottom: 0.8rem; line-height: 1.5;">
+            تجد هنا ملفات حفظ بطاقة الذاكرة الخاصة بك بالإضافة إلى الألعاب التي قمت برفعها على خادم البوابة!
+          </p>
+
+          <div class="panel-header" style="font-size: 0.95rem; margin-top: 1rem; padding-top: 0.8rem; margin-bottom: 0.6rem;">
+            <span>💾 كرت الذاكرة السحابي (Memory Card profile slots)</span>
+          </div>
+          <div class="memory-card-grid" id="mem-card-container-profile" style="margin-bottom: 1.2rem;">
+            <!-- 15 blocks rendered dynamically by JS -->
+          </div>
+
+          <!-- Import/Export Save States Buttons -->
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; justify-content: center; width: 100%;">
+            <button class="mge-btn mge-btn-blue" onclick="exportSaves()" style="margin-top: 0; padding: 0.6rem 1rem; font-size: 0.8rem; border-radius: 12px; flex: 1;">📤 تصدير نسخة التخزين</button>
+            <button class="mge-btn mge-btn-outline" onclick="triggerImportSaves()" style="margin-top: 0; padding: 0.6rem 1rem; font-size: 0.8rem; border-radius: 12px; flex: 1;">📥 استيراد نسخة التخزين</button>
+            <input type="file" id="import-saves-file" accept=".json" style="display: none;" onchange="handleImportSaves(event)">
+          </div>
+
+          <!-- Uploaded Roms Library on Server -->
+          <div class="panel-header" style="font-size: 0.95rem; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.8rem; margin-bottom: 0.6rem;">
+            <span>📀 مكتبة الألعاب المرفوعة على السيرفر</span>
+          </div>
+          <div id="server-roms-list-profile" style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem;">
+            <div class="setting-label" style="text-align: center; padding: 0.5rem; color: var(--text-muted);">لا توجد ألعاب مرفوعة حالياً.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Tab 4: Reliable MGE AI Chatbot Assistant (Standalone Tab) -->
+    <div id="tab-ai" class="tab-content">
+      <div class="downloads-container" style="max-width: 800px; margin: 0 auto;">
+        
+        <div class="card-panel" style="width: 100%;">
+          <div class="panel-header">
+            <span>🧠 المساعد الذكي للألعاب (Reliable AI Assistant)</span>
+            <span class="panel-icon">💡</span>
+          </div>
+          
+          <p class="setting-label" style="margin-bottom: 1.2rem; line-height: 1.5; font-size: 0.9rem;">
+            مرحبًا بك في واجهة المساعد الذكي المستقلة! تحدث معه لحل أي مشاكل في المحاكاة، دليل الألعاب، تهيئة ملفات الـ BIOS، أو أسئلة الأمان السحابي للمنصة!
+          </p>
+
+          <!-- Chat Window Box -->
+          <div id="ai-chat-box" style="height: 250px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.4); border-radius: 16px; padding: 1rem; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.8rem;">
+            <!-- AI Welcome Message -->
+            <div class="chat-msg msg-ai" style="align-self: flex-start; max-width: 85%; text-align: right; background: rgba(41, 121, 255, 0.15); border: 1px solid rgba(41, 121, 255, 0.3); padding: 0.6rem 1rem; border-radius: 16px 16px 16px 4px; color: #fff; font-size: 0.82rem;">
+              <div style="font-weight: bold; color: #2979ff; font-size: 0.72rem; margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.3rem;">🧠 المساعد الذكي للألعاب:</div>
+              أهلاً بك يا بطل! أنا مساعد الذكاء الاصطناعي الموثوق الخاص بـ بوابة ألعاب الزمن الجميل. اسألني أي سؤال حول تشغيل الألعاب، مشكلة التخزين، كيف تربط أمان جهازك، أو أي استفسار آخر وسأجيبك فوراً! 🎮✨
+            </div>
+          </div>
+
+          <!-- Interactive Quick Query Chips -->
+          <div style="margin-bottom: 0.8rem; display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: flex-start;">
+            <button class="ai-chip" onclick="askAiQuestion('كيف أشغل لعبة مرفوعة؟')">🎮 كيف أشغل الألعاب؟</button>
+            <button class="ai-chip" onclick="askAiQuestion('كيف أفعل بصمة الإصبع Windows Hello؟')">🔒 تفعيل أمان البصمة</button>
+            <button class="ai-chip" onclick="askAiQuestion('لماذا حساب الزائر المحدود لا يمكنه حفظ الملفات؟')">⚠️ قيود حساب الزائر</button>
+            <button class="ai-chip" onclick="askAiQuestion('كيف يمكنني استيراد وتصدير كروت التخزين؟')">💾 استيراد وتصدير كروت التخزين</button>
+          </div>
+
+          <!-- Prompt Entry Area -->
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="text" id="ai-user-prompt" placeholder="اكتب سؤالك هنا بخصوص المحاكي..." style="flex: 1; padding: 0.8rem; border-radius: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right; font-size: 0.85rem;" onkeypress="if(event.key === 'Enter') submitAiPrompt()">
+            <button id="btn-voice-typing" class="mge-btn-outline" onclick="toggleVoiceTyping()" style="width: auto; padding: 0.8rem 1rem; margin-top: 0; border-radius: 12px; font-size: 1.1rem; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.03); cursor: pointer; transition: all 0.3s;" title="الكتابة بالصوت 🎙️">🎙️</button>
+            <button class="mge-btn mge-btn-blue" onclick="submitAiPrompt()" style="width: auto; padding: 0.8rem 1.4rem; margin-top: 0; border-radius: 12px; font-size: 0.85rem;">ارسل ⚡</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Interactive Guides Modal Popup -->
+  <div class="guide-modal" id="guide-modal">
+    <div class="modal-content">
+      <button class="close-modal" onclick="closeGuide()">&times;</button>
+      <h3 id="modal-title" style="font-family: 'Orbitron', sans-serif; font-size: 1.6rem; color: #fff; margin-bottom: 1rem; border-bottom: 2px solid var(--neon-border); padding-bottom: 0.5rem;">دليل تشغيل المحاكي</h3>
+      
+      <div id="modal-body-content">
+        <!-- populated dynamically by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Terms and Conditions Modal Popup -->
+  <div class="guide-modal" id="terms-modal">
+    <div class="modal-content" style="max-width: 750px;">
+      <button class="close-modal" onclick="closeTermsModal()">&times;</button>
+      <h3 style="font-family: 'Orbitron', 'Inter', sans-serif; font-size: 1.5rem; color: #fff; margin-bottom: 1rem; border-bottom: 2px solid var(--accent-color); padding-bottom: 0.5rem; text-align: right;">⚖️ شروط الخدمة وسياسة الخصوصية القياسية (TOS & Privacy Policy)</h3>
+      
+      <div style="text-align: right; line-height: 1.8; font-size: 0.85rem; color: var(--text-main); max-height: 60vh; overflow-y: auto; padding-right: 0.5rem; direction: rtl;">
+        <p style="color: #ffc02e; font-weight: bold; margin-bottom: 1rem;">يرجى قراءة شروط الخدمة وسياسة الخصوصية التالية بعناية قبل استخدام الموقع. يمثل استخدامك للموقع أو تسجيل حساب جديد موافقة قانونية كاملة على هذه البنود وفقاً للمعايير التنظيمية الدولية والمحلية:</p>
+        
+        <div style="margin-bottom: 1.2rem;">
+          <h4 style="color: #fff; margin-bottom: 0.4rem; font-size: 0.95rem;">1. قبول الشروط والأهلية القانونية (Acceptance of Terms & Eligibility)</h4>
+          <p style="color: var(--text-muted); text-align: justify;">باستخدام هذا الموقع أو أي من خدماته، فإنك تقر بأنك تبلغ سن الرشد القانوني في بلد إقامتك وتتمتع بالأهلية الكاملة لإبرام هذا العقد. إذا كنت تستخدم الخدمة نيابة عن كيان قانوني، فإنك تقر بامتلاك الصلاحية لربط هذا الكيان بهذه الاتفاقية.</p>
+        </div>
+
+        <div style="margin-bottom: 1.2rem;">
+          <h4 style="color: #fff; margin-bottom: 0.4rem; font-size: 0.95rem;">2. سياسة الخصوصية وحماية البيانات الشخصية (Privacy & GDPR Compliance)</h4>
+          <p style="color: var(--text-muted); text-align: justify;">نحن نلتزم بحماية بياناتك وخصوصيتك وفقاً للمعايير العالمية (مثل اللائحة العامة لحماية البيانات GDPR):
+          <br>• <strong>البيانات التي نجمعها</strong>: نجمع فقط البيانات اللازمة لتشغيل الخدمة (اسم المستخدم، البريد الإلكتروني، والبيانات التقنية العامة للجلسة).
+          <br>• <strong>الأمان والحماية</strong>: يتم حماية وحفظ كلمات المرور بشكل كامل وآمن باستخدام معايير حماية متطورة.
+          <br>• <strong>الدخول السريع</strong>: تتم ميزة تسجيل الدخول السريع محلياً بالكامل عبر نظام التشغيل وجهازك الخاص، ولا يتم مشاركة أو إرسال أي تفاصيل حساسة إلى خوادمنا نهائياً.
+          <br>• <strong>حقوق المستخدم</strong>: يحق لك تعديل بريدك الإلكتروني، تغيير كلمة مرورك، أو طلب حذف حسابك وبياناتك المخزنة بالكامل في أي وقت.</p>
+        </div>
+
+        <div style="margin-bottom: 1.2rem;">
+          <h4 style="color: #fff; margin-bottom: 0.4rem; font-size: 0.95rem;">3. حسابات المستخدمين والمسؤولية الأمنية (User Accounts & Credentials)</h4>
+          <p style="color: var(--text-muted); text-align: justify;">أنت مسؤول بشكل كامل عن الحفاظ على سرية بيانات اعتماد حسابك (اسم المستخدم وكلمة المرور) وعن جميع الأنشطة التي تحدث تحت حسابك. يجب عليك إخطار الإدارة فوراً بأي استخدام غير مصرح به لحسابك أو أي خرق أمني آخر.</p>
+        </div>
+
+        <div style="margin-bottom: 1.2rem;">
+          <h4 style="color: #fff; margin-bottom: 0.4rem; font-size: 0.95rem;">4. الاستخدام المقبول والأنشطة المحظورة (Acceptable Use Policy)</h4>
+          <p style="color: var(--text-muted); text-align: justify;">توافق على عدم استخدام الخدمة في:
+          <br>• رفع أو نقل أي محتوى غير قانوني، أو ضار، أو ينتهك حقوق الملكية الفكرية للآخرين.
+          <br>• القيام بأي نشاط يهدف إلى تعطيل أو اختراق أو زيادة الحمل على خوادم المنصة (مثل هجمات الحرمان من الخدمة DoS/DDoS، أو استخدام برمجيات خبيثة).
+          <br>• محاولة التلاعب بالبرمجيات أو فك الأكواد المستخدمة في تشغيل البوابة.</p>
+        </div>
+
+        <div style="margin-bottom: 1.2rem;">
+          <h4 style="color: #fff; margin-bottom: 0.4rem; font-size: 0.95rem;">5. حقوق الملكية الفكرية العامة (Intellectual Property & Copyleft)</h4>
+          <p style="color: var(--text-muted); text-align: justify;">جميع المحتويات والأكواد والرسوم البيانية والعلامات التجارية الموجودة على الموقع هي ملك لأصحابها ومحمية بموجب قوانين الملكية الفكرية الدولية. أما المحتوى والملفات والألعاب المرفوعة من قبل المستخدمين، فإن المسؤولية الكاملة عنها تقع على عاتق المستخدم وحده، ويقر بأنه يمتلك كافة الحقوق والتراخيص القانونية اللازمة لرفعها أو محاكاتها.</p>
+        </div>
+
+        <div style="margin-bottom: 1.2rem;">
+          <h4 style="color: #fff; margin-bottom: 0.4rem; font-size: 0.95rem;">6. إخلاء المسؤولية عن الضمانات (Disclaimer of Warranties)</h4>
+          <p style="color: var(--text-muted); text-align: justify;">تُقدم الخدمة "كما هي" (As Is) و"حسب توفرها" دون أي ضمانات من أي نوع، سواء كانت صريحة أو ضمنية. نحن لا نضمن أن الخدمة ستكون مستمرة دون انقطاع، أو خالية من الأخطاء، أو أن أي بيانات مخزنة (بما في ذلك كروت الذاكرة السحابية وملفات الحفظ) ستكون آمنة من الفقد التام نتيجة ظروف تشغيلية أو قاهرة.</p>
+        </div>
+
+        <div style="margin-bottom: 1.2rem;">
+          <h4 style="color: #fff; margin-bottom: 0.4rem; font-size: 0.95rem;">7. تحديد المسؤولية والتعويض (Limitation of Liability & Indemnity)</h4>
+          <p style="color: var(--text-muted); text-align: justify;">إلى الحد الأقصى الذي يسمح به القانون، لا تتحمل المنصة أو مشغلوها المسؤولية عن أي أضرار غير مباشرة، أو عرضية، أو خاصة، أو تبعية (بما في ذلك خسارة الأرباح أو البيانات) الناتجة عن استخدامك للخدمة. وتوافق على تعويض وحماية المنصة من أي مطالبات قانونية تنتج عن انتهاكك لهذه الشروط.</p>
+        </div>
+
+        <div style="margin-bottom: 0.5rem;">
+          <h4 style="color: #fff; margin-bottom: 0.4rem; font-size: 0.95rem;">8. القانون الواجب التطبيق والتعديلات (Governing Law & Modifications)</h4>
+          <p style="color: var(--text-muted); text-align: justify;">تخضع هذه الشروط وتُفسر وفقاً للقوانين والأنظمة المعمول بها دولياً لحماية المستهلكين وخصوصية البيانات الرقمية. تحتفظ المنصة بالحق في تحديث وتعديل هذه الشروط في أي وقت، وسيتم نشر التعديلات مباشرة على هذه الصفحة لتكون سارية فوراً.</p>
+        </div>
+      </div>
+      
+      <button class="mge-btn mge-btn-blue" onclick="acceptTermsAndClose()" style="margin-top: 1.5rem; border-radius: 12px; font-size: 0.9rem; padding: 0.6rem 1.5rem;">أوافق على شروط الخدمة وسياسة الخصوصية القياسية ✅</button>
+    </div>
+  </div>
+
+  <!-- Simulated Launcher Glassmorphic Loading Overlay (Desktop / Non-Android View) -->
+  <div class="launcher-overlay" id="sim-launcher-overlay">
+    <div class="launcher-loader-box">
+      <div id="sim-app-icon" style="font-size: 4rem; animation: floaty 2s infinite ease-in-out;">🎮</div>
+      <h2 id="sim-app-title" style="color: #fff; font-family: 'Orbitron', sans-serif; font-size: 1.8rem; margin-top: 1rem; text-shadow: 0 0 10px rgba(255,255,255,0.2);">GTA San Andreas</h2>
+      <span style="font-size: 0.75rem; color: var(--accent-color); font-family: 'Press Start 2P', monospace; margin-top: 0.5rem; letter-spacing: 1.5px;">LAUNCHING DEVICE EXECUTABLE</span>
+      
+      <div class="launcher-progress-container">
+        <div class="launcher-progress-bar" id="sim-progress-bar"></div>
+      </div>
+      
+      <div class="launcher-status-text" id="sim-status-label">LOADING MEMORY BLOCKS...</div>
+      
+      <button class="mge-btn mge-btn-outline" onclick="closeSimulatedLauncher()" style="margin-top: 1.5rem; border-radius: 12px; font-size: 0.8rem; padding: 0.5rem 1.2rem; width: auto; display: none;" id="sim-close-btn">✖ إلغاء التشغيل</button>
+    </div>
+  </div>
+
+  <script src="app.js?v=3.0"></script>
+</body>
+</html>
+
+
+
+
