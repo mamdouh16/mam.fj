@@ -1643,6 +1643,49 @@ canvas#emulator-canvas {
     --controller-btn-size: 44px;
   }
   
+  header {
+    flex-direction: column;
+    gap: 1.2rem;
+    align-items: center;
+    padding: 1.2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  
+  nav {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+  }
+  
+  .nav-btn {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.8rem;
+    flex: 1;
+    min-width: 120px;
+    justify-content: center;
+  }
+
+  .logo-container {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.2rem;
+  }
+
+  .logo-text {
+    font-size: 1.3rem;
+  }
+
+  .logo-sub {
+    font-size: 0.6rem;
+  }
+
+  .logout-header-btn {
+    width: 100%;
+    justify-content: center;
+    margin-top: 0.5rem;
+  }
+  
   .console-wrapper {
     border-radius: 24px;
     padding: 1rem;
@@ -1663,6 +1706,24 @@ canvas#emulator-canvas {
   .btn-cross { bottom: 0; left: 33px; }
   .btn-square { top: 33px; left: 0; }
   
+  .controllers-section {
+    padding: 0;
+    gap: 0.3rem;
+  }
+
+  .system-btns {
+    gap: 0.8rem;
+  }
+
+  .sys-btn {
+    width: 38px;
+    height: 12px;
+  }
+
+  .sys-btn-label {
+    font-size: 0.55rem;
+  }
+  
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
@@ -1676,6 +1737,50 @@ canvas#emulator-canvas {
     padding: 2px 12px;
     font-size: 0.7rem;
     border-width: 2px;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --dpad-size: 85px;
+    --controller-btn-size: 34px;
+  }
+  
+  .console-wrapper {
+    padding: 0.6rem;
+    border-radius: 16px;
+    border-width: 3px;
+  }
+  
+  .console-screen-frame {
+    padding: 4px;
+    border-radius: 8px;
+  }
+  
+  .dpad-up, .dpad-down { width: 34px; height: 28px; left: 25px; }
+  .dpad-left, .dpad-right { width: 28px; height: 34px; top: 25px; }
+  .dpad-center { width: 34px; height: 34px; top: 25px; left: 25px; }
+  
+  .btn-triangle { top: 0; left: 25px; }
+  .btn-circle { top: 25px; right: 0; }
+  .btn-cross { bottom: 0; left: 25px; }
+  .btn-square { top: 25px; left: 0; }
+  
+  .system-btns {
+    gap: 0.4rem;
+  }
+  
+  .sys-btn {
+    width: 32px;
+    height: 10px;
+  }
+  
+  .sys-btn-label {
+    font-size: 0.48rem;
+  }
+  
+  .controllers-section {
+    gap: 0.1rem;
   }
 }
 
