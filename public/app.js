@@ -1060,6 +1060,11 @@ function togglePower() {
     clearTimeout(bootTimeout1);
     clearTimeout(bootTimeout2);
     
+    const iframe = document.getElementById('emulator-js-iframe');
+    if (iframe) iframe.remove();
+    const canvas = document.getElementById('emulator-canvas');
+    if (canvas) canvas.style.display = 'block';
+
     stopGame();
     stopBgmSequencer();
     screenMode = 'off';
@@ -1072,6 +1077,79 @@ function togglePower() {
     gameLayer.classList.remove('active');
     document.getElementById('screen-glare').classList.remove('active');
   }
+}
+
+let currentScreenY = 0;
+function adjustScreenHeight(direction) {
+  const frame = document.getElementById('emulator-screen-frame');
+  if (!frame) return;
+  
+  if (direction === 'up') {
+    currentScreenY = Math.max(-120, currentScreenY - 15);
+  } else if (direction === 'down') {
+    currentScreenY = Math.min(120, currentScreenY + 15);
+  } else if (direction === 'reset') {
+    currentScreenY = 0;
+  }
+  
+  frame.style.transform = `translateY(${currentScreenY}px)`;
+  frame.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+  
+  // Play sound effect
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  playBeepSound(600, 0.05);
+}
+
+function launchEmulatorJS(romUrl, coreName) {
+  const gameLayer = document.getElementById('game-layer');
+  if (!gameLayer) return;
+
+  // Hide the standard canvas
+  const canvas = document.getElementById('emulator-canvas');
+  if (canvas) canvas.style.display = 'none';
+
+  // Remove any existing iframe
+  const oldIframe = document.getElementById('emulator-js-iframe');
+  if (oldIframe) oldIframe.remove();
+
+  // Create iframe
+  const iframe = document.createElement('iframe');
+  iframe.id = 'emulator-js-iframe';
+  iframe.style.width = '100%';
+  iframe.style.height = '100%';
+  iframe.style.border = 'none';
+  iframe.style.background = '#000';
+  iframe.allow = 'autoplay; gamepad';
+  
+  const iframeContent = `
+    <html>
+      <head>
+        <style>
+          body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+          #game { width: 100%; height: 100%; }
+        </style>
+      </head>
+      <body>
+        <div id="game"></div>
+        <script>
+          EJS_player = "#game";
+          EJS_core = "${coreName}";
+          EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
+          EJS_gameUrl = "${romUrl}";
+          EJS_startOnLoaded = true;
+          EJS_Volume = 0.5;
+        </script>
+        <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
+      </body>
+    </html>
+  `;
+
+  gameLayer.appendChild(iframe);
+  
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+  iframeDoc.open();
+  iframeDoc.write(iframeContent);
+  iframeDoc.close();
 }
 
 // -------------------------------------------------------------
@@ -1445,6 +1523,11 @@ function playScreechSound() {
 // BIOS System Dashboard: Selection Menu
 // -------------------------------------------------------------
 function enterBiosMenu() {
+  const iframe = document.getElementById('emulator-js-iframe');
+  if (iframe) iframe.remove();
+  const canvas = document.getElementById('emulator-canvas');
+  if (canvas) canvas.style.display = 'block';
+
   screenMode = 'bios_menu';
   selectedGameIndex = 0;
   stopGame();
@@ -1582,27 +1665,63 @@ function bootSelectedGame() {
     screenMode = 'playing_game';
     
     const filenameLower = (targetGame.filename || '').toLowerCase();
-    if (targetGame.id === 'rom_pre1' || filenameLower.includes('galaxy') || filenameLower.includes('hubble') || targetGame.id === 'store_game_4') {
-      gameState.activeGame = 'space_racer';
-      startGame();
-    } else if (targetGame.id === 'rom_pre2' || filenameLower.includes('formula') || targetGame.id === 'store_game_5') {
-      gameState.activeGame = 'highway_racer';
-      startHighwayGame();
-    } else if (targetGame.id === 'store_game_1' || filenameLower.includes('ucity')) {
-      gameState.activeGame = 'city_builder';
-      startCityGame();
-    } else if (targetGame.id === 'store_game_2' || filenameLower.includes('doom')) {
-      gameState.activeGame = 'doom_shooter';
-      startDoomGame();
-    } else if (targetGame.id === 'store_game_3' || filenameLower.includes('block_boy')) {
-      gameState.activeGame = 'block_boy';
-      startPlatformerGame();
-    } else if (targetGame.id === 'store_game_6' || filenameLower.includes('memcard')) {
-      gameState.activeGame = 'memcard_tool';
-      startMemcardGame();
+    const isRealRom = targetGame.preloaded !== true || targetGame.id === 'rom_pre3';
+    
+    if (isRealRom) {
+      let coreName = 'nes';
+      let romUrl = targetGame.filename || '';
+
+      // Map store games to real working homebrew/shareware ROM URLs
+      if (targetGame.id === 'store_game_1' || filenameLower.includes('ucity')) {
+        coreName = 'gb';
+        romUrl = 'https://archive.org/download/ucity-gbc/ucity.gbc';
+      } else if (targetGame.id === 'store_game_2' || filenameLower.includes('doom')) {
+        coreName = 'nes';
+        romUrl = 'https://archive.org/download/DoomNes/Doom%20%28NES%29.nes';
+      } else if (targetGame.id === 'store_game_3' || filenameLower.includes('block_boy')) {
+        coreName = 'nes';
+        romUrl = 'https://archive.org/download/alter-ego-nes/Alter_Ego.nes';
+      } else if (targetGame.id === 'store_game_4' || filenameLower.includes('hubble')) {
+        coreName = 'nes';
+        romUrl = 'https://archive.org/download/galaxian-nes/Galaxian%20%28Japan%29.nes';
+      } else if (targetGame.id === 'store_game_5' || filenameLower.includes('formula')) {
+        coreName = 'nes';
+        romUrl = 'https://archive.org/download/road-fighter-nes/Road%20Fighter%20%28Japan%29.nes';
+      } else if (targetGame.id === 'store_game_6' || filenameLower.includes('memcard')) {
+        coreName = 'nes';
+        romUrl = 'https://archive.org/download/tetris-nes/Tetris%20%28USA%29.nes';
+      } else {
+        // Determine core from uploaded extension
+        if (filenameLower.endsWith('.gb') || filenameLower.endsWith('.gbc')) {
+          coreName = 'gb';
+        } else if (filenameLower.endsWith('.nes')) {
+          coreName = 'nes';
+        } else if (filenameLower.endsWith('.sfc') || filenameLower.endsWith('.smc')) {
+          coreName = 'snes';
+        } else if (filenameLower.endsWith('.gba')) {
+          coreName = 'gba';
+        } else if (filenameLower.endsWith('.bin') || filenameLower.endsWith('.cue') || filenameLower.endsWith('.iso') || filenameLower.endsWith('.img') || filenameLower.endsWith('.zip')) {
+          coreName = 'psx';
+        }
+        
+        // Resolve absolute URL
+        if (!romUrl.startsWith('http://') && !romUrl.startsWith('https://')) {
+          romUrl = `/roms/${romUrl}`;
+        }
+      }
+
+      launchEmulatorJS(romUrl, coreName);
     } else {
-      gameState.activeGame = 'space_racer';
-      startGame();
+      if (targetGame.id === 'rom_pre1') {
+        gameState.activeGame = 'space_racer';
+        startGame();
+      } else if (targetGame.id === 'rom_pre2') {
+        gameState.activeGame = 'highway_racer';
+        startHighwayGame();
+      } else {
+        gameState.activeGame = 'space_racer';
+        startGame();
+      }
     }
   }, 3000);
 }

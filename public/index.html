@@ -214,8 +214,15 @@
           </div>
         </div>
 
+        <!-- Screen Height Control Buttons -->
+        <div class="screen-height-controls" style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 0.8rem; direction: rtl;">
+          <button class="mge-btn-outline" onclick="adjustScreenHeight('up')" style="padding: 0.3rem 0.7rem; font-size: 0.75rem; border-radius: 8px; cursor: pointer;">🔼 تحريك الشاشة لأعلى</button>
+          <button class="mge-btn-outline" onclick="adjustScreenHeight('down')" style="padding: 0.3rem 0.7rem; font-size: 0.75rem; border-radius: 8px; cursor: pointer;">🔽 تحريك الشاشة لأسفل</button>
+          <button class="mge-btn-outline" onclick="adjustScreenHeight('reset')" style="padding: 0.3rem 0.7rem; font-size: 0.75rem; border-radius: 8px; cursor: pointer;">🔄 ضبط تلقائي</button>
+        </div>
+
         <!-- Monitor Screen Bezel -->
-        <div class="console-screen-frame">
+        <div class="console-screen-frame" id="emulator-screen-frame">
           <div class="console-screen">
             
             <!-- Shaders & Curvatures -->
