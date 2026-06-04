@@ -1581,12 +1581,25 @@ function bootSelectedGame() {
   setTimeout(() => {
     screenMode = 'playing_game';
     
-    if (targetGame.id === 'rom_pre1') {
+    const filenameLower = (targetGame.filename || '').toLowerCase();
+    if (targetGame.id === 'rom_pre1' || filenameLower.includes('galaxy') || filenameLower.includes('hubble') || targetGame.id === 'store_game_4') {
       gameState.activeGame = 'space_racer';
       startGame();
-    } else if (targetGame.id === 'rom_pre2') {
+    } else if (targetGame.id === 'rom_pre2' || filenameLower.includes('formula') || targetGame.id === 'store_game_5') {
       gameState.activeGame = 'highway_racer';
       startHighwayGame();
+    } else if (targetGame.id === 'store_game_1' || filenameLower.includes('ucity')) {
+      gameState.activeGame = 'city_builder';
+      startCityGame();
+    } else if (targetGame.id === 'store_game_2' || filenameLower.includes('doom')) {
+      gameState.activeGame = 'doom_shooter';
+      startDoomGame();
+    } else if (targetGame.id === 'store_game_3' || filenameLower.includes('block_boy')) {
+      gameState.activeGame = 'block_boy';
+      startPlatformerGame();
+    } else if (targetGame.id === 'store_game_6' || filenameLower.includes('memcard')) {
+      gameState.activeGame = 'memcard_tool';
+      startMemcardGame();
     } else {
       gameState.activeGame = 'space_racer';
       startGame();
@@ -1623,6 +1636,10 @@ function setupVirtualController() {
       if (btnKey === 'start' && gameState.gameOver) {
         if (gameState.activeGame === 'space_racer') restartGame();
         else if (gameState.activeGame === 'highway_racer') restartHighwayGame();
+        else if (gameState.activeGame === 'city_builder') startCityGame();
+        else if (gameState.activeGame === 'doom_shooter') startDoomGame();
+        else if (gameState.activeGame === 'block_boy') startPlatformerGame();
+        else if (gameState.activeGame === 'memcard_tool') startMemcardGame();
       }
       
       if (btnKey === 'select' && screenMode === 'playing_game') {
@@ -1684,6 +1701,10 @@ function setupKeyboardController() {
       if (mappedBtn === 'start' && gameState.gameOver) {
         if (gameState.activeGame === 'space_racer') restartGame();
         else if (gameState.activeGame === 'highway_racer') restartHighwayGame();
+        else if (gameState.activeGame === 'city_builder') startCityGame();
+        else if (gameState.activeGame === 'doom_shooter') startDoomGame();
+        else if (gameState.activeGame === 'block_boy') startPlatformerGame();
+        else if (gameState.activeGame === 'memcard_tool') startMemcardGame();
       }
       
       if (mappedBtn === 'select' && screenMode === 'playing_game') {
@@ -1746,6 +1767,10 @@ function pollGamepad() {
       if (keysPressed['start'] && gameState.gameOver) {
         if (gameState.activeGame === 'space_racer') restartGame();
         else if (gameState.activeGame === 'highway_racer') restartHighwayGame();
+        else if (gameState.activeGame === 'city_builder') startCityGame();
+        else if (gameState.activeGame === 'doom_shooter') startDoomGame();
+        else if (gameState.activeGame === 'block_boy') startPlatformerGame();
+        else if (gameState.activeGame === 'memcard_tool') startMemcardGame();
       }
       if (keysPressed['select'] && screenMode === 'playing_game') {
         enterBiosMenu();
@@ -1799,6 +1824,18 @@ function runGameLoop() {
   } else if (gameState.activeGame === 'highway_racer') {
     updateHighwayLogic();
     drawHighwayGraphics();
+  } else if (gameState.activeGame === 'city_builder') {
+    updateCityLogic();
+    drawCityGraphics();
+  } else if (gameState.activeGame === 'doom_shooter') {
+    updateDoomLogic();
+    drawDoomGraphics();
+  } else if (gameState.activeGame === 'block_boy') {
+    updatePlatformerLogic();
+    drawPlatformerGraphics();
+  } else if (gameState.activeGame === 'memcard_tool') {
+    updateMemcardLogic();
+    drawMemcardGraphics();
   }
   
   gameLoopId = requestAnimationFrame(runGameLoop);
@@ -2384,9 +2421,734 @@ function drawHighwayGraphics() {
     ctx.fillText("PRESS 'SELECT' FOR MAIN BIOS MENU", canvas.width / 2, canvas.height / 2 + 90);
     ctx.textAlign = 'left';
   }
-}// -------------------------------------------------------------
-// POST Saves / GET Saves / DELETE Saves on Server Database
-// -------------------------------------------------------------
+  }
+}
+
+// ============================================================================
+// 1. DOOM SHOOTER SIMULATION (doom_shooter)
+// ============================================================================
+function startDoomGame() {
+  gameState.playing = true;
+  gameState.gameOver = false;
+  gameState.score = 0;
+  gameState.health = 100;
+  gameState.ammo = 50;
+  gameState.doomDemons = [];
+  gameState.gunFlash = 0;
+  gameState.lastShotFrame = 0;
+  gameState.frameCount = 0;
+  gameState.cameraX = 0;
+
+  // Spawn initial demon
+  spawnDoomDemon();
+}
+
+function spawnDoomDemon() {
+  gameState.doomDemons.push({
+    x: (Math.random() - 0.5) * 100, // offset from center
+    y: 0.1, // scale size (distance)
+    speed: 0.005 + Math.random() * 0.005,
+    lastAttack: 0
+  });
+}
+
+function updateDoomLogic() {
+  if (gameState.gameOver) return;
+  gameState.frameCount++;
+
+  // Camera sway using D-PAD
+  if (keysPressed['left']) gameState.cameraX = Math.min(30, gameState.cameraX + 2);
+  else if (keysPressed['right']) gameState.cameraX = Math.max(-30, gameState.cameraX - 2);
+  else gameState.cameraX *= 0.9;
+
+  // Shooting (Cross button)
+  if (keysPressed['cross'] && gameState.frameCount - gameState.lastShotFrame > 8) {
+    if (gameState.ammo > 0) {
+      gameState.ammo--;
+      gameState.gunFlash = 4;
+      gameState.lastShotFrame = gameState.frameCount;
+      playBeepSound(150, 0.08, 'sawtooth');
+
+      // Check hits (is any demon near the crosshair?)
+      let hit = false;
+      gameState.doomDemons.forEach((demon, idx) => {
+        const screenX = canvas.width / 2 + demon.x - gameState.cameraX;
+        // If close to center crosshair
+        if (Math.abs(screenX - canvas.width / 2) < 40 && demon.y > 0.4) {
+          demon.y = 0; // Destroyed
+          hit = true;
+          gameState.score += 100;
+          playBeepSound(100, 0.2, 'square');
+        }
+      });
+      
+      if (!hit) {
+        playBeepSound(220, 0.05, 'sine');
+      }
+    } else {
+      playBeepSound(880, 0.05, 'sine'); // Out of ammo click
+      gameState.lastShotFrame = gameState.frameCount;
+    }
+  }
+
+  // Update gun flash duration
+  if (gameState.gunFlash > 0) gameState.gunFlash--;
+
+  // Update Demons
+  let newDemons = [];
+  gameState.doomDemons.forEach(demon => {
+    if (demon.y === 0) return; // skip hit ones
+
+    // Move closer (grow in scale)
+    demon.y += demon.speed;
+    
+    // Attack if too close
+    if (demon.y >= 1.0) {
+      if (gameState.frameCount - demon.lastAttack > 40) {
+        gameState.health = Math.max(0, gameState.health - 15);
+        demon.lastAttack = gameState.frameCount;
+        playBeepSound(80, 0.3, 'triangle');
+        if (navigator.vibrate) navigator.vibrate(200);
+      }
+      // Re-spawn demon further back
+      demon.y = 0.1;
+      demon.x = (Math.random() - 0.5) * 100;
+    }
+    
+    newDemons.push(demon);
+  });
+  gameState.doomDemons = newDemons;
+
+  // Auto spawn new demons
+  if (gameState.doomDemons.length < 3 && Math.random() < 0.02) {
+    spawnDoomDemon();
+  }
+
+  if (gameState.health <= 0) {
+    gameState.gameOver = true;
+  }
+}
+
+function drawDoomGraphics() {
+  // Clear screen
+  ctx.fillStyle = '#110202'; // dark demonic red
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw simulated 3D ceiling & floor
+  ctx.fillStyle = '#0f0202';
+  ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
+  ctx.fillStyle = '#1c0f0f';
+  ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
+
+  // Draw 3D walls (vanishing perspective perspective lines)
+  ctx.strokeStyle = '#4a0e0e';
+  ctx.lineWidth = 3;
+  
+  // Left wall lines
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.lineTo(canvas.width / 2 - gameState.cameraX, canvas.height / 2);
+  ctx.moveTo(0, canvas.height); ctx.lineTo(canvas.width / 2 - gameState.cameraX, canvas.height / 2);
+  // Right wall lines
+  ctx.moveTo(canvas.width, 0); ctx.lineTo(canvas.width / 2 - gameState.cameraX, canvas.height / 2);
+  ctx.moveTo(canvas.width, canvas.height); ctx.lineTo(canvas.width / 2 - gameState.cameraX, canvas.height / 2);
+  ctx.stroke();
+
+  // Draw simulated corridor tiles on floor/walls
+  ctx.strokeStyle = '#ff3333';
+  ctx.lineWidth = 1;
+  for (let d = 0.1; d < 1.0; d += 0.2) {
+    const sizeX = canvas.width * d;
+    const sizeY = canvas.height * d;
+    ctx.strokeRect(
+      canvas.width / 2 - sizeX / 2 - gameState.cameraX * d,
+      canvas.height / 2 - sizeY / 2,
+      sizeX,
+      sizeY
+    );
+  }
+
+  // Draw Demons
+  gameState.doomDemons.forEach(demon => {
+    const screenX = canvas.width / 2 + demon.x - gameState.cameraX;
+    const screenY = canvas.height / 2 + 20;
+    const demonSize = 140 * demon.y;
+
+    if (demon.y < 0.1) return;
+
+    // Draw demon body (red pulsing circle or skull mockup)
+    ctx.shadowColor = '#ff1100';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = '#cc1100';
+    ctx.beginPath();
+    ctx.arc(screenX, screenY - demonSize/4, demonSize/2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Demon horns
+    ctx.fillStyle = '#ff8800';
+    ctx.beginPath();
+    ctx.moveTo(screenX - demonSize/3, screenY - demonSize/2);
+    ctx.lineTo(screenX - demonSize/2, screenY - demonSize);
+    ctx.lineTo(screenX - demonSize/5, screenY - demonSize/3);
+    ctx.moveTo(screenX + demonSize/3, screenY - demonSize/2);
+    ctx.lineTo(screenX + demonSize/2, screenY - demonSize);
+    ctx.lineTo(screenX + demonSize/5, screenY - demonSize/3);
+    ctx.fill();
+
+    // Demon eyes (glow yellow)
+    ctx.fillStyle = '#ffff00';
+    ctx.fillRect(screenX - demonSize/5, screenY - demonSize/3, 8 * demon.y, 4 * demon.y);
+    ctx.fillRect(screenX + demonSize/10, screenY - demonSize/3, 8 * demon.y, 4 * demon.y);
+  });
+
+  // Crosshair
+  ctx.strokeStyle = 'rgba(0, 255, 102, 0.4)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(canvas.width / 2, canvas.height / 2, 10, 0, Math.PI * 2);
+  ctx.moveTo(canvas.width / 2 - 15, canvas.height / 2);
+  ctx.lineTo(canvas.width / 2 + 15, canvas.height / 2);
+  ctx.moveTo(canvas.width / 2, canvas.height / 2 - 15);
+  ctx.lineTo(canvas.width / 2, canvas.height / 2 + 15);
+  ctx.stroke();
+
+  // Draw Doom Classic Gun HUD (Bottom Center)
+  const gunWidth = 100;
+  const gunHeight = 110;
+  const gunX = canvas.width / 2 - gunWidth / 2 + gameState.cameraX * 0.3;
+  const gunY = canvas.height - gunHeight;
+
+  // Gun Body
+  ctx.fillStyle = '#3a3a44';
+  ctx.fillRect(gunX, gunY + 20, gunWidth, gunHeight);
+  // Gun barrels
+  ctx.fillStyle = '#22222b';
+  ctx.fillRect(gunX + 35, gunY, 12, 30);
+  ctx.fillRect(gunX + 53, gunY, 12, 30);
+
+  // Muzzle Flash
+  if (gameState.gunFlash > 0) {
+    ctx.fillStyle = '#ffff00';
+    ctx.shadowColor = '#ff9900';
+    ctx.shadowBlur = 20;
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2 + gameState.cameraX * 0.3, gunY - 5, 25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  // HUD stats overlay (bottom panel)
+  ctx.fillStyle = '#222';
+  ctx.fillRect(0, canvas.height - 35, canvas.width, 35);
+  ctx.strokeStyle = '#ff3333';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(0, canvas.height - 35, canvas.width, 35);
+
+  ctx.font = "8px 'Press Start 2P', monospace";
+  ctx.fillStyle = '#ff3b30';
+  ctx.fillText(`HEALTH: ${gameState.health}%`, 20, canvas.height - 15);
+  ctx.fillStyle = '#00ff66';
+  ctx.fillText(`AMMO: ${gameState.ammo}`, canvas.width / 3 + 10, canvas.height - 15);
+  ctx.fillStyle = '#ffc02e';
+  ctx.fillText(`SCORE: ${gameState.score}`, canvas.width * 0.6 + 20, canvas.height - 15);
+
+  if (gameState.gameOver) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.font = "20px 'Press Start 2P', monospace";
+    ctx.fillStyle = '#ff3333';
+    ctx.textAlign = 'center';
+    ctx.fillText("YOU DIED!", canvas.width / 2, canvas.height / 2 - 20);
+
+    ctx.font = "10px 'Press Start 2P', monospace";
+    ctx.fillStyle = '#fff';
+    ctx.fillText(`DEMONS SLAIN: ${gameState.score/100}`, canvas.width / 2, canvas.height / 2 + 15);
+    ctx.fillText("PRESS 'START' TO RESPAWN", canvas.width / 2, canvas.height / 2 + 45);
+    ctx.textAlign = 'left';
+  }
+}
+
+// ============================================================================
+// 2. UCITY PSX CITY BUILDER SIMULATION (city_builder)
+// ============================================================================
+function startCityGame() {
+  gameState.playing = true;
+  gameState.gameOver = false;
+  gameState.score = 0;
+  gameState.cityBudget = 10000;
+  gameState.cityPopulation = 0;
+  gameState.cityX = 4; // cursor tile X
+  gameState.cityY = 3; // cursor tile Y
+  gameState.frameCount = 0;
+
+  // Grid Map (10 columns x 8 rows)
+  // 0 = Empty, 1 = Residential (Green), 2 = Commercial (Blue), 3 = Industrial (Yellow), 4 = Road (Grey)
+  gameState.cityGrid = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 4, 4, 4, 4, 4, 0, 0],
+    [0, 0, 0, 4, 0, 0, 0, 4, 0, 0],
+    [0, 0, 0, 4, 0, 0, 0, 4, 0, 0],
+    [0, 0, 0, 4, 4, 4, 4, 4, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  ];
+}
+
+function updateCityLogic() {
+  gameState.frameCount++;
+
+  // Tax/population ticks (every 100 frames)
+  if (gameState.frameCount % 100 === 0) {
+    let resCount = 0;
+    let comCount = 0;
+    let indCount = 0;
+    let roadCount = 0;
+
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 10; c++) {
+        if (gameState.cityGrid[r][c] === 1) resCount++;
+        else if (gameState.cityGrid[r][c] === 2) comCount++;
+        else if (gameState.cityGrid[r][c] === 3) indCount++;
+        else if (gameState.cityGrid[r][c] === 4) roadCount++;
+      }
+    }
+
+    gameState.cityPopulation += resCount * 50 + comCount * 20;
+    gameState.cityBudget += resCount * 10 + comCount * 20 + indCount * 30 - roadCount * 2;
+    gameState.score = Math.floor(gameState.cityPopulation + gameState.cityBudget / 100);
+  }
+
+  // Move Selector Cursor (D-pad) with simple throttle to prevent hyper movement
+  if (gameState.frameCount % 6 === 0) {
+    if (keysPressed['left']) gameState.cityX = Math.max(0, gameState.cityX - 1);
+    if (keysPressed['right']) gameState.cityX = Math.min(9, gameState.cityX + 1);
+    if (keysPressed['up']) gameState.cityY = Math.max(0, gameState.cityY - 1);
+    if (keysPressed['down']) gameState.cityY = Math.min(7, gameState.cityY + 1);
+  }
+
+  // Build controls
+  const curX = gameState.cityX;
+  const curY = gameState.cityY;
+
+  // Build Residential (Green) -> CROSS button (cost $100)
+  if (keysPressed['cross'] && gameState.cityGrid[curY][curX] === 0 && gameState.cityBudget >= 100) {
+    gameState.cityGrid[curY][curX] = 1;
+    gameState.cityBudget -= 100;
+    playBeepSound(523, 0.08, 'sine'); // C5
+  }
+
+  // Build Commercial (Blue) -> CIRCLE button (cost $150)
+  if (keysPressed['circle'] && gameState.cityGrid[curY][curX] === 0 && gameState.cityBudget >= 150) {
+    gameState.cityGrid[curY][curX] = 2;
+    gameState.cityBudget -= 150;
+    playBeepSound(659, 0.08, 'sine'); // E5
+  }
+
+  // Build Industrial (Yellow) -> TRIANGLE button (cost $200)
+  if (keysPressed['triangle'] && gameState.cityGrid[curY][curX] === 0 && gameState.cityBudget >= 200) {
+    gameState.cityGrid[curY][curX] = 3;
+    gameState.cityBudget -= 200;
+    playBeepSound(784, 0.08, 'sine'); // G5
+  }
+
+  // Build Roads (Grey) -> SQUARE button (cost $50)
+  if (keysPressed['square'] && gameState.cityGrid[curY][curX] === 0 && gameState.cityBudget >= 50) {
+    gameState.cityGrid[curY][curX] = 4;
+    gameState.cityBudget -= 50;
+    playBeepSound(440, 0.05, 'sine'); // A4
+  }
+  
+  // Demolish / Clear -> L1 button
+  if (keysPressed['L1'] && gameState.cityGrid[curY][curX] > 0) {
+    gameState.cityGrid[curY][curX] = 0;
+    playBeepSound(200, 0.15, 'sawtooth');
+  }
+}
+
+function drawCityGraphics() {
+  // Clear
+  ctx.fillStyle = '#1e301d'; // Grassland green
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const gridOffsetX = 20;
+  const gridOffsetY = 55;
+  const cellSize = 38;
+
+  // Draw Grid Map
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 10; c++) {
+      const cellX = gridOffsetX + c * cellSize;
+      const cellY = gridOffsetY + r * cellSize;
+      const type = gameState.cityGrid[r][c];
+
+      // Draw cell background
+      ctx.fillStyle = 'rgba(255,255,255,0.03)';
+      ctx.fillRect(cellX, cellY, cellSize - 2, cellSize - 2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctx.strokeRect(cellX, cellY, cellSize - 2, cellSize - 2);
+
+      // Draw cell buildings
+      if (type === 1) {
+        // Residential (House)
+        ctx.fillStyle = '#00cc44'; // Green zone
+        ctx.fillRect(cellX + 4, cellY + 4, cellSize - 10, cellSize - 10);
+        // Roof
+        ctx.fillStyle = '#992200';
+        ctx.beginPath();
+        ctx.moveTo(cellX + 4, cellY + 4);
+        ctx.lineTo(cellX + cellSize - 6, cellY + 4);
+        ctx.lineTo(cellX + cellSize/2 - 1, cellY - 1);
+        ctx.fill();
+      } else if (type === 2) {
+        // Commercial (Shop/Tower)
+        ctx.fillStyle = '#007cf8'; // Blue
+        ctx.fillRect(cellX + 4, cellY + 4, cellSize - 10, cellSize - 10);
+        // Windows
+        ctx.fillStyle = '#ffff00';
+        ctx.fillRect(cellX + 8, cellY + 10, 4, 4);
+        ctx.fillRect(cellX + 16, cellY + 10, 4, 4);
+        ctx.fillRect(cellX + 8, cellY + 20, 4, 4);
+        ctx.fillRect(cellX + 16, cellY + 20, 4, 4);
+      } else if (type === 3) {
+        // Industrial (Factory)
+        ctx.fillStyle = '#f6d300'; // Yellow
+        ctx.fillRect(cellX + 4, cellY + 10, cellSize - 10, cellSize - 16);
+        // Chimney
+        ctx.fillStyle = '#555';
+        ctx.fillRect(cellX + cellSize - 12, cellY + 2, 6, 12);
+      } else if (type === 4) {
+        // Road
+        ctx.fillStyle = '#555e6b'; // Dark grey
+        ctx.fillRect(cellX, cellY + cellSize/3, cellSize - 2, cellSize/3);
+        ctx.fillStyle = '#ffdd00'; // center yellow line
+        ctx.fillRect(cellX, cellY + cellSize/2 - 1, cellSize - 2, 2);
+      }
+    }
+  }
+
+  // Draw Cursor Selector
+  const curX = gridOffsetX + gameState.cityX * cellSize;
+  const curY = gridOffsetY + gameState.cityY * cellSize;
+  
+  ctx.strokeStyle = '#00f0ff';
+  ctx.lineWidth = 3;
+  ctx.shadowColor = '#00f0ff';
+  ctx.shadowBlur = 8;
+  ctx.strokeRect(curX - 1, curY - 1, cellSize, cellSize);
+  ctx.shadowBlur = 0;
+
+  // Header Dashboard Info Panel
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, canvas.width, 45);
+  ctx.strokeStyle = '#00f0ff';
+  ctx.strokeRect(0, 0, canvas.width, 45);
+
+  ctx.font = "8px 'Press Start 2P', monospace";
+  ctx.fillStyle = '#00ff66';
+  ctx.fillText(`💰 BUDGET: $${gameState.cityBudget}`, 15, 27);
+  ctx.fillStyle = '#00e5ff';
+  ctx.fillText(`👤 POP: ${gameState.cityPopulation}`, canvas.width / 2 - 30, 27);
+  ctx.fillStyle = '#ffc02e';
+  ctx.fillText(`SCORE: ${gameState.score}`, canvas.width - 130, 27);
+
+  // Controller Instruction Footer
+  ctx.fillStyle = 'rgba(0,0,0,0.8)';
+  ctx.fillRect(0, canvas.height - 35, canvas.width, 35);
+  
+  ctx.font = "7px 'Press Start 2P', monospace";
+  ctx.fillStyle = '#8e95a5';
+  ctx.fillText("✖:Res($100)  ●:Com($150)  ▲:Ind($200)  ■:Road($50)  L1:Demolish", 10, canvas.height - 15);
+}
+
+// ============================================================================
+// 3. SUPER BLOCK BOY PLATFORMER SIMULATION (block_boy)
+// ============================================================================
+function startPlatformerGame() {
+  gameState.playing = true;
+  gameState.gameOver = false;
+  gameState.score = 0;
+  
+  gameState.playerX = 80;
+  gameState.playerY = 200;
+  gameState.velY = 0;
+  gameState.isJumping = false;
+  gameState.scrollOffset = 0;
+
+  // Coins array
+  gameState.coins = [
+    { x: 200, y: 150, active: true },
+    { x: 320, y: 110, active: true },
+    { x: 440, y: 120, active: true },
+    { x: 550, y: 160, active: true },
+    { x: 670, y: 130, active: true }
+  ];
+
+  // Spikes array
+  gameState.spikes = [
+    { x: 250, y: 220 },
+    { x: 480, y: 220 },
+    { x: 620, y: 220 }
+  ];
+}
+
+function updatePlatformerLogic() {
+  if (gameState.gameOver) return;
+
+  // Move left/right (D-pad)
+  if (keysPressed['left']) {
+    gameState.playerX = Math.max(20, gameState.playerX - 4);
+    if (gameState.playerX - gameState.scrollOffset < 100) {
+      gameState.scrollOffset = Math.max(0, gameState.scrollOffset - 4);
+    }
+  }
+  if (keysPressed['right']) {
+    gameState.playerX += 4;
+    if (gameState.playerX - gameState.scrollOffset > canvas.width - 150) {
+      gameState.scrollOffset += 4;
+    }
+  }
+
+  // Jump (Cross Button)
+  if (keysPressed['cross'] && !gameState.isJumping) {
+    gameState.velY = -9.5;
+    gameState.isJumping = true;
+    playBeepSound(440, 0.1, 'sine');
+  }
+
+  // Apply Gravity
+  gameState.velY += 0.45; // gravity
+  gameState.playerY += gameState.velY;
+
+  // Ground collision
+  if (gameState.playerY >= 200) {
+    gameState.playerY = 200;
+    gameState.velY = 0;
+    gameState.isJumping = false;
+  }
+
+  // Check coin collisions
+  gameState.coins.forEach(coin => {
+    if (coin.active && Math.abs(gameState.playerX - coin.x) < 20 && Math.abs(gameState.playerY - coin.y) < 20) {
+      coin.active = false;
+      gameState.score += 50;
+      playBeepSound(880, 0.08, 'sine');
+    }
+  });
+
+  // Check spike collisions
+  gameState.spikes.forEach(spike => {
+    if (Math.abs(gameState.playerX - spike.x) < 18 && gameState.playerY >= 195) {
+      gameState.gameOver = true;
+      playBeepSound(120, 0.4, 'sawtooth');
+      if (navigator.vibrate) navigator.vibrate([100, 50, 150]);
+    }
+  });
+
+  // Infinite run loop: spawn coins and spikes dynamically as player moves forward
+  if (gameState.playerX > gameState.coins[gameState.coins.length - 1].x - 100) {
+    const lastX = gameState.coins[gameState.coins.length - 1].x;
+    gameState.coins.push({
+      x: lastX + 180 + Math.random() * 100,
+      y: 100 + Math.random() * 80,
+      active: true
+    });
+    gameState.spikes.push({
+      x: lastX + 260 + Math.random() * 120,
+      y: 220
+    });
+  }
+}
+
+function drawPlatformerGraphics() {
+  // Clear screen
+  ctx.fillStyle = '#4a75a0'; // sky blue
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw clouds
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.fillRect(80 - gameState.scrollOffset * 0.2, 50, 60, 20);
+  ctx.fillRect(280 - gameState.scrollOffset * 0.2, 70, 80, 25);
+  ctx.fillRect(480 - gameState.scrollOffset * 0.2, 40, 50, 15);
+
+  // Draw Ground
+  ctx.fillStyle = '#654321'; // soil brown
+  ctx.fillRect(0, 220, canvas.width, canvas.height - 220);
+  ctx.fillStyle = '#228b22'; // grass green
+  ctx.fillRect(0, 220, canvas.width, 10);
+
+  // Draw Coins
+  gameState.coins.forEach(coin => {
+    if (!coin.active) return;
+    const screenX = coin.x - gameState.scrollOffset;
+    if (screenX < -20 || screenX > canvas.width + 20) return;
+
+    ctx.fillStyle = '#ffcc00';
+    ctx.beginPath();
+    ctx.arc(screenX, coin.y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+  });
+
+  // Draw Spikes
+  gameState.spikes.forEach(spike => {
+    const screenX = spike.x - gameState.scrollOffset;
+    if (screenX < -20 || screenX > canvas.width + 20) return;
+
+    ctx.fillStyle = '#a1a8b8';
+    ctx.beginPath();
+    ctx.moveTo(screenX, spike.y);
+    ctx.lineTo(screenX - 12, spike.y + 10);
+    ctx.lineTo(screenX + 12, spike.y + 10);
+    ctx.closePath();
+    ctx.fill();
+  });
+
+  // Draw Player (Super Block Boy!)
+  const playerScreenX = gameState.playerX - gameState.scrollOffset;
+  ctx.fillStyle = '#e52521'; // red block body
+  ctx.fillRect(playerScreenX - 10, gameState.playerY - 20, 20, 20);
+  ctx.fillStyle = '#00c0ff'; // blue cap visor
+  ctx.fillRect(playerScreenX - 5, gameState.playerY - 23, 10, 4);
+
+  // HUD stats overlay (bottom panel)
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, canvas.height - 35, canvas.width, 35);
+  ctx.strokeStyle = '#e52521';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(0, canvas.height - 35, canvas.width, 35);
+
+  ctx.font = "8px 'Press Start 2P', monospace";
+  ctx.fillStyle = '#ffc02e';
+  ctx.fillText(`SCORE: ${gameState.score}`, 20, canvas.height - 15);
+  ctx.fillStyle = '#fff';
+  ctx.fillText("CROSS: JUMP  ◀ / ▶: MOVE", canvas.width / 2 - 100, canvas.height - 15);
+
+  if (gameState.gameOver) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.font = "20px 'Press Start 2P', monospace";
+    ctx.fillStyle = '#ff3333';
+    ctx.textAlign = 'center';
+    ctx.fillText("GAME OVER!", canvas.width / 2, canvas.height / 2 - 20);
+
+    ctx.font = "10px 'Press Start 2P', monospace";
+    ctx.fillStyle = '#fff';
+    ctx.fillText(`COINS COLLECTED: ${gameState.score/50}`, canvas.width / 2, canvas.height / 2 + 15);
+    ctx.fillText("PRESS 'START' TO PLAY AGAIN", canvas.width / 2, canvas.height / 2 + 45);
+    ctx.textAlign = 'left';
+  }
+}
+
+// ============================================================================
+// 4. MEMORY CARD bios TOOL SIMULATION (memcard_tool)
+// ============================================================================
+function startMemcardGame() {
+  gameState.playing = true;
+  gameState.gameOver = false;
+  gameState.score = 0;
+  gameState.formatProgress = 0;
+  gameState.isFormatting = false;
+  gameState.frameCount = 0;
+}
+
+function updateMemcardLogic() {
+  gameState.frameCount++;
+
+  if (gameState.isFormatting) {
+    gameState.formatProgress += 1;
+    if (gameState.formatProgress % 10 === 0) {
+      playBeepSound(1000, 0.05);
+    }
+    if (gameState.formatProgress >= 100) {
+      gameState.isFormatting = false;
+      gameState.formatProgress = 100;
+      playBeepSound(880, 0.3, 'sine');
+    }
+  }
+
+  // Cross triggers formatting
+  if (keysPressed['cross'] && !gameState.isFormatting && gameState.formatProgress < 100) {
+    gameState.isFormatting = true;
+    gameState.formatProgress = 0;
+    playBeepSound(600, 0.1);
+  }
+}
+
+function drawMemcardGraphics() {
+  // Clear screen
+  ctx.fillStyle = '#0f1424'; // deep bios blue
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = '#2979ff';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+
+  ctx.font = "12px 'Press Start 2P', monospace";
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.fillText("PS1 MEMORY CARD MANAGER", canvas.width / 2, 45);
+
+  ctx.font = "8px 'Press Start 2P', monospace";
+  ctx.fillStyle = '#8e95a5';
+  ctx.fillText("BIOS TOOL UTILITY v1.02", canvas.width / 2, 65);
+
+  // Draw mock memory blocks
+  const blocksX = canvas.width / 2 - 110;
+  const blocksY = 90;
+  ctx.strokeStyle = '#2979ff';
+  ctx.lineWidth = 1;
+
+  for (let i = 0; i < 15; i++) {
+    const col = i % 5;
+    const row = Math.floor(i / 5);
+    const cellX = blocksX + col * 45;
+    const cellY = blocksY + row * 30;
+
+    // Filled or formatted blocks
+    if (gameState.formatProgress === 100) {
+      ctx.fillStyle = '#00ff66';
+      ctx.fillRect(cellX, cellY, 35, 20);
+      ctx.font = "7px 'Press Start 2P', monospace";
+      ctx.fillStyle = '#000';
+      ctx.fillText("FREE", cellX + 18, cellY + 13);
+    } else {
+      ctx.fillStyle = '#ff5e97';
+      ctx.fillRect(cellX, cellY, 35, 20);
+      ctx.font = "7px 'Press Start 2P', monospace";
+      ctx.fillStyle = '#fff';
+      ctx.fillText("USED", cellX + 18, cellY + 13);
+    }
+    ctx.strokeRect(cellX, cellY, 35, 20);
+  }
+
+  // Format Button and Progress Bar
+  const barY = canvas.height - 75;
+  if (gameState.isFormatting) {
+    ctx.fillStyle = '#fff';
+    ctx.fillText(`FORMATTING MEMORY CARD: ${gameState.formatProgress}%`, canvas.width / 2, barY - 15);
+    // Draw Progress Bar
+    ctx.strokeStyle = '#fff';
+    ctx.strokeRect(canvas.width / 2 - 100, barY, 200, 15);
+    ctx.fillStyle = '#00ff66';
+    ctx.fillRect(canvas.width / 2 - 98, barY + 2, 196 * (gameState.formatProgress / 100), 11);
+  } else if (gameState.formatProgress === 100) {
+    ctx.fillStyle = '#00ff66';
+    ctx.fillText("CARD FORMATTED SUCCESSFULLY!", canvas.width / 2, barY - 15);
+    ctx.fillStyle = '#8e95a5';
+    ctx.fillText("PRESS SELECT KEY TO RETURN TO SYSTEM MENU", canvas.width / 2, barY + 10);
+  } else {
+    ctx.fillStyle = '#fff';
+    ctx.fillText("PRESS 'CROSS' BUTTON TO FORMAT SCLOUD CARD", canvas.width / 2, barY - 10);
+    ctx.fillStyle = '#8e95a5';
+    ctx.fillText("SELECT: RETURN TO MAIN CD BIOS MENU", canvas.width / 2, barY + 10);
+  }
+  ctx.textAlign = 'left';
+}
+
 function saveScoreToServer(gameName, score) {
   let targetSlot = 0;
   const occupiedSlots = serverSavesList.map(s => s.slot);
