@@ -94,7 +94,11 @@ let dbData = {
 function loadDB() {
   try {
     if (fs.existsSync(DB_PATH)) {
-      const raw = fs.readFileSync(DB_PATH, 'utf8');
+      let raw = fs.readFileSync(DB_PATH, 'utf8');
+      // Strip UTF-8 BOM if present
+      if (raw.charCodeAt(0) === 0xFEFF) {
+        raw = raw.slice(1);
+      }
       const loaded = JSON.parse(raw);
       
       // Ensure tables exist
