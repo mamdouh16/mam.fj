@@ -90,6 +90,8 @@ function loadDB() {
       // Ensure tables exist
       dbData.saves = loaded.saves || [];
       dbData.users = loaded.users || dbData.users;
+      dbData.system_config = loaded.system_config || { portal_name: "ألعاب الزمن الجميل" };
+      dbData.local_apps = loaded.local_apps || [];
       
       // Merge loaded roms, ensuring preloaded games are always present
       const loadedRoms = loaded.roms || [];
@@ -253,7 +255,71 @@ const db = {
     
     saveDB();
     return true;
+  },
+
+  // Config & Admin helpers
+  getUsers() {
+    return dbData.users;
+  },
+
+  deleteUser(username) {
+    const originalLength = dbData.users.length;
+    dbData.users = dbData.users.filter(u => u.username.toLowerCase() !== username.toLowerCase());
+    saveDB();
+    return dbData.users.length < originalLength;
+  },
+
+  updateUser(username, newEmail, newPassword) {
+    const user = this.getUser(username);
+    if (user) {
+      if (newEmail) user.email = newEmail;
+      if (newPassword) {
+        const salt = generateSalt();
+        user.salt = salt;
+        user.passwordHash = hashPassword(newPassword, salt);
+      }
+      saveDB();
+      return true;
+    }
+    return false;
+  },
+
+  getSystemConfig() {
+    return dbData.system_config || { portal_name: "ألعاب الزمن الجميل" };
+  },
+
+  saveSystemConfig(config) {
+    dbData.system_config = config;
+    saveDB();
+    return dbData.system_config;
+  },
+
+  getLocalApps() {
+    return dbData.local_apps || [];
+  },
+
+  addLocalApp(name, packageName, icon, platform) {
+    if (!dbData.local_apps) dbData.local_apps = [];
+    const newApp = {
+      id: 'local_app_' + Date.now() + Math.random().toString(36).substring(2, 5),
+      name: name,
+      package: packageName,
+      icon: icon,
+      platform: platform
+    };
+    dbData.local_apps.push(newApp);
+    saveDB();
+    return newApp;
+  },
+
+  deleteLocalApp(id) {
+    if (!dbData.local_apps) return false;
+    const originalLength = dbData.local_apps.length;
+    dbData.local_apps = dbData.local_apps.filter(app => app.id !== id);
+    saveDB();
+    return dbData.local_apps.length < originalLength;
   }
 };
 
 module.exports = db;
+

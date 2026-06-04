@@ -194,6 +194,63 @@ const upload = multer({
 
 // === SECURITY & AUTHENTICATION ENDPOINTS ===
 
+// Auto-login owner under specific conditions (local environments or owner query/host names)
+app.post('/api/auth/auto-login-owner', (req, res) => {
+  try {
+    const { owner } = req.body;
+    const hostHeader = req.headers['x-forwarded-host'] || req.headers['host'] || '';
+    const cleanHost = hostHeader.split(':')[0].toLowerCase();
+    
+    // Check if visiting from mallea hostnames
+    const isMalleaHost = cleanHost === 'mallea' || cleanHost === 'mallea.local' || cleanHost === 'mallea.com';
+    
+    // Check if local IP address
+    const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+    const cleanIp = ip.replace(/^.*:/, ''); // strip IPv6 prefix
+    const isLocalIp = cleanIp === '127.0.0.1' || 
+                      cleanIp === 'localhost' || 
+                      cleanIp === '::1' || 
+                      cleanIp.startsWith('192.168.') || 
+                      cleanIp.startsWith('10.') || 
+                      cleanIp.startsWith('172.'); // general check for private range
+                      
+    let allowAutoLogin = false;
+    if (isMalleaHost) {
+      allowAutoLogin = true;
+    } else if (isLocalIp && owner === true) {
+      allowAutoLogin = true;
+    }
+    
+    if (allowAutoLogin) {
+      const user = db.getUser('mallea');
+      if (user) {
+        // Generate secure token
+        const sessionToken = crypto.randomBytes(32).toString('hex');
+        activeSessions.set(sessionToken, {
+          username: user.username,
+          expiresAt: Date.now() + 2 * 60 * 60 * 1000 // 2 hours secure session
+        });
+        
+        return res.json({
+          success: true,
+          token: sessionToken,
+          user: {
+            username: user.username,
+            email: user.email,
+            webauthnEnabled: !!user.webauthnCredentialId
+          }
+        });
+      } else {
+        return res.status(404).json({ success: false, message: 'حساب المدير mallea غير موجود!' });
+      }
+    } else {
+      return res.status(403).json({ success: false, message: 'غير مسموح بالدخول التلقائي من هذا النطاق أو العنوان!' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // 1. Standard login with password verification and secure token generation (Apply Rate Limiting!)
 app.post('/api/auth/login', authRateLimiter, (req, res) => {
   try {
@@ -525,6 +582,147 @@ app.post('/api/user/update-password', validateSession, (req, res) => {
       res.json({ success: true, message: 'تم تغيير كلمة المرور بنجاح وحفظها في قاعدة البيانات السحابية!' });
     } else {
       res.status(404).json({ success: false, message: 'المستخدم غير موجود!' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Middleware to ensure user is admin
+function validateAdminSession(req, res, next) {
+  const admins = ['admin', 'mamdouh', 'mallea'];
+  if (admins.includes(req.username.toLowerCase())) {
+    next();
+  } else {
+    res.status(403).json({ success: false, message: 'غير مسموح: هذه اللوحة مخصصة لمدراء النظام فقط!' });
+  }
+}
+
+// === ADMIN MANAGEMENT ENDPOINTS ===
+
+// 1. Get user list (Admin only)
+app.get('/api/admin/users', validateSession, validateAdminSession, (req, res) => {
+  try {
+    const users = db.getUsers();
+    // Project only safe fields (omit password hash and salt)
+    const safeUsers = users.map(u => ({
+      username: u.username,
+      email: u.email,
+      webauthnEnabled: !!u.webauthnCredentialId
+    }));
+    res.json({ success: true, data: safeUsers });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 2. Delete user (Admin only)
+app.post('/api/admin/users/delete', validateSession, validateAdminSession, (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) {
+      return res.status(400).json({ success: false, message: 'اسم المستخدم مطلوب!' });
+    }
+    
+    // Prevent admin from deleting themselves or main owner accounts
+    const protectedUsers = ['admin', 'mamdouh', 'mallea'];
+    if (protectedUsers.includes(username.toLowerCase())) {
+      return res.status(403).json({ success: false, message: 'غير مسموح بحذف الحسابات الإدارية الأساسية!' });
+    }
+    
+    const success = db.deleteUser(username);
+    if (success) {
+      res.json({ success: true, message: `تم حذف المستخدم "${username}" بنجاح!` });
+    } else {
+      res.status(404).json({ success: false, message: 'المستخدم غير موجود!' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 3. Update user profile/password (Admin only)
+app.post('/api/admin/update', validateSession, validateAdminSession, (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    if (!username) {
+      return res.status(400).json({ success: false, message: 'اسم المستخدم مطلوب!' });
+    }
+    
+    const success = db.updateUser(username, email, password);
+    if (success) {
+      res.json({ success: true, message: `تم تحديث بيانات الحساب "${username}" بنجاح!` });
+    } else {
+      res.status(404).json({ success: false, message: 'المستخدم غير موجود!' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 4. Get system configuration (Public)
+app.get('/api/config', (req, res) => {
+  try {
+    const config = db.getSystemConfig();
+    res.json({ success: true, data: config });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 5. Update system configuration (Admin only)
+app.post('/api/admin/config', validateSession, validateAdminSession, (req, res) => {
+  try {
+    const { portal_name } = req.body;
+    if (!portal_name) {
+      return res.status(400).json({ success: false, message: 'اسم المنصة مطلوب!' });
+    }
+    
+    const newConfig = db.saveSystemConfig({ portal_name });
+    res.json({ success: true, message: 'تم تحديث إعدادات المنصة بنجاح!', data: newConfig });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 6. Get local applications list (User session required)
+app.get('/api/local-apps', validateSession, (req, res) => {
+  try {
+    const apps = db.getLocalApps();
+    res.json({ success: true, data: apps });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 7. Add local application (Admin only)
+app.post('/api/admin/local-apps', validateSession, validateAdminSession, (req, res) => {
+  try {
+    const { name, package: packageName, icon, platform } = req.body;
+    if (!name || !packageName || !icon || !platform) {
+      return res.status(400).json({ success: false, message: 'جميع تفاصيل التطبيق مطلوبة!' });
+    }
+    
+    const newApp = db.addLocalApp(name, packageName, icon, platform);
+    res.json({ success: true, message: `تمت إضافة التطبيق "${name}" بنجاح!`, data: newApp });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 8. Delete local application (Admin only)
+app.post('/api/admin/local-apps/delete', validateSession, validateAdminSession, (req, res) => {
+  try {
+    const { id } = req.body;
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'معرف التطبيق مطلوب!' });
+    }
+    
+    const success = db.deleteLocalApp(id);
+    if (success) {
+      res.json({ success: true, message: 'تم حذف التطبيق بنجاح!' });
+    } else {
+      res.status(404).json({ success: false, message: 'التطبيق غير موجود!' });
     }
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
