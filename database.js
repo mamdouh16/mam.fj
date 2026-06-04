@@ -158,13 +158,21 @@ const db = {
 
   // Users Table
   getUser(username) {
-    return dbData.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    if (!username) return null;
+    const cleanUsername = username.trim().toLowerCase();
+    return dbData.users.find(u => u.username && u.username.trim().toLowerCase() === cleanUsername);
   },
 
   // Securely Register User
   registerUser(username, email, password) {
+    if (!username || !email || !password) {
+      return { success: false, message: 'يرجى ملء جميع الحقول المطلوبة!' };
+    }
+    const cleanUsername = username.trim();
+    const cleanEmail = email.trim();
+
     // Check if user already exists
-    const existing = this.getUser(username);
+    const existing = this.getUser(cleanUsername);
     if (existing) {
       return { success: false, message: 'اسم المستخدم مسجل بالفعل!' };
     }
@@ -173,8 +181,8 @@ const db = {
     const passwordHash = hashPassword(password, salt);
 
     const newUser = {
-      username: username,
-      email: email,
+      username: cleanUsername,
+      email: cleanEmail,
       passwordHash: passwordHash,
       salt: salt,
       webauthnCredentialId: null
@@ -300,7 +308,7 @@ const db = {
   updateUser(username, newEmail, newPassword) {
     const user = this.getUser(username);
     if (user) {
-      if (newEmail) user.email = newEmail;
+      if (newEmail) user.email = newEmail.trim();
       if (newPassword) {
         const salt = generateSalt();
         user.salt = salt;

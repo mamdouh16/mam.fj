@@ -32,10 +32,11 @@
         <div class="input-container">
           <span class="input-icon">🔒</span>
           <input type="password" id="login-password" style="text-align: right;" placeholder="كلمة المرور">
+          <button class="password-toggle-btn" type="button" tabindex="-1" onclick="togglePasswordVisibility('login-password', this)">👁️</button>
         </div>
 
         <div style="text-align: right; width: 100%; margin-top: -0.5rem; display: flex; justify-content: space-between; align-items: center; padding: 0 0.5rem;">
-          <a href="#" class="form-link" onclick="alert('للحصول على صلاحيات الإدارة، يرجى إدخال اسم المستخدم وكلمة المرور الإدارية الخاصة بك.')">نسيت كلمة المرور؟</a>
+          <a href="#" class="form-link" onclick="toggleAuthForm('reset'); event.preventDefault();">نسيت كلمة المرور؟</a>
           <span style="font-size: 0.72rem; color: #ffc02e;">دخول الزوار متاح بالأسفل ⬇️</span>
         </div>
 
@@ -86,11 +87,13 @@
         <div class="input-container">
           <span class="input-icon">🔒</span>
           <input type="password" id="reg-password" style="text-align: right;" placeholder="كلمة المرور">
+          <button class="password-toggle-btn" type="button" tabindex="-1" onclick="togglePasswordVisibility('reg-password', this)">👁️</button>
         </div>
 
         <div class="input-container">
           <span class="input-icon">🔒</span>
           <input type="password" id="reg-password-confirm" style="text-align: right;" placeholder="تأكيد كلمة المرور">
+          <button class="password-toggle-btn" type="button" tabindex="-1" onclick="togglePasswordVisibility('reg-password-confirm', this)">👁️</button>
         </div>
 
         <div class="terms-inline-box" style="width: 100%; text-align: right; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.8rem; border-radius: 12px; font-size: 0.72rem; color: var(--text-muted); max-height: 100px; overflow-y: auto; margin-bottom: 0.5rem; direction: rtl; line-height: 1.5;">
@@ -114,6 +117,46 @@
         </div>
         <div style="margin-top: 1rem;">
           <a href="#" onclick="showTermsModal(); event.preventDefault();" style="font-size: 0.7rem; color: var(--text-muted); text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#00ff66'" onmouseout="this.style.color='var(--text-muted)'">⚖️ الشروط والأحكام وسياسة الخصوصية</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Left Card: Reset Password (إعادة تعيين كلمة المرور) with Blue Neon Glow -->
+    <div class="login-card card-blue-glow" id="mge-reset-card" style="display: none;">
+      <div class="mge-logo-wrapper">
+        <img src="logo.jpg" alt="the_good_old_days" class="site-logo-img">
+      </div>
+      
+      <h2 class="form-title">إعادة تعيين كلمة المرور</h2>
+      
+      <div class="form-box">
+        <div class="input-container">
+          <span class="input-icon">👤</span>
+          <input type="text" id="reset-username" style="text-align: right;" placeholder="اسم المستخدم">
+        </div>
+
+        <div class="input-container">
+          <span class="input-icon">✉️</span>
+          <input type="email" id="reset-email" style="text-align: right;" placeholder="البريد الإلكتروني المسجل">
+        </div>
+        
+        <div class="input-container">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="reset-password" style="text-align: right;" placeholder="كلمة المرور الجديدة">
+          <button class="password-toggle-btn" type="button" tabindex="-1" onclick="togglePasswordVisibility('reset-password', this)">👁️</button>
+        </div>
+
+        <div class="input-container">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="reset-password-confirm" style="text-align: right;" placeholder="تأكيد كلمة المرور الجديدة">
+          <button class="password-toggle-btn" type="button" tabindex="-1" onclick="togglePasswordVisibility('reset-password-confirm', this)">👁️</button>
+        </div>
+
+        <button class="mge-btn mge-btn-blue" onclick="submitPasswordReset()">إعادة تعيين كلمة المرور</button>
+        
+        <div style="margin-top: 1.5rem;">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">تذكرت كلمة المرور؟</span>
+          <button class="mge-btn-outline" onclick="toggleAuthForm('login')">تسجيل الدخول</button>
         </div>
       </div>
     </div>
@@ -625,17 +668,26 @@
 
               <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.4rem; border: none; padding: 0;">
                 <span class="setting-label">كلمة المرور الحالية (للتحقق من الحساب)</span>
-                <input type="password" id="user-current-password" placeholder="أدخل كلمة المرور الحالية للتحقق" style="width: 100%; padding: 0.6rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+                <div style="position: relative; width: 100%;">
+                  <input type="password" id="user-current-password" placeholder="أدخل كلمة المرور الحالية للتحقق" style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 2.2rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+                  <button class="password-toggle-btn-absolute" type="button" tabindex="-1" onclick="togglePasswordVisibility('user-current-password', this)">👁️</button>
+                </div>
               </div>
 
               <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.4rem; border: none; padding: 0;">
                 <span class="setting-label">كلمة المرور الجديدة</span>
-                <input type="password" id="user-new-password" placeholder="أدخل كلمة المرور الجديدة" style="width: 100%; padding: 0.6rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+                <div style="position: relative; width: 100%;">
+                  <input type="password" id="user-new-password" placeholder="أدخل كلمة المرور الجديدة" style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 2.2rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+                  <button class="password-toggle-btn-absolute" type="button" tabindex="-1" onclick="togglePasswordVisibility('user-new-password', this)">👁️</button>
+                </div>
               </div>
               
               <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.4rem; border: none; padding: 0;">
                 <span class="setting-label">تأكيد كلمة المرور الجديدة</span>
-                <input type="password" id="user-new-password-confirm" placeholder="تأكيد كلمة المرور الجديدة" style="width: 100%; padding: 0.6rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+                <div style="position: relative; width: 100%;">
+                  <input type="password" id="user-new-password-confirm" placeholder="تأكيد كلمة المرور الجديدة" style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 2.2rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+                  <button class="password-toggle-btn-absolute" type="button" tabindex="-1" onclick="togglePasswordVisibility('user-new-password-confirm', this)">👁️</button>
+                </div>
               </div>
               
               <button class="mge-btn mge-btn-blue" onclick="changeUserPassword()" style="padding: 0.6rem; font-size: 0.85rem; border-radius: 12px; margin-top: 0.4rem;">🔒 تحديث كلمة المرور</button>
@@ -657,7 +709,10 @@
               
               <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 0.4rem; border: none; padding: 0; margin-top: 0.8rem;">
                 <span class="setting-label">تغيير كلمة المرور الإدارية</span>
-                <input type="password" id="admin-edit-password" placeholder="كلمة المرور الجديدة" style="width: 100%; padding: 0.6rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+                <div style="position: relative; width: 100%;">
+                  <input type="password" id="admin-edit-password" placeholder="كلمة المرور الجديدة" style="width: 100%; padding: 0.6rem 0.6rem 0.6rem 2.2rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right;">
+                  <button class="password-toggle-btn-absolute" type="button" tabindex="-1" onclick="togglePasswordVisibility('admin-edit-password', this)">👁️</button>
+                </div>
               </div>
               
               <button class="mge-btn mge-btn-blue" onclick="saveAdminSettings()" style="padding: 0.6rem; font-size: 0.85rem; border-radius: 12px; margin-top: 0.8rem;">💾 حفظ التعديلات الإدارية</button>

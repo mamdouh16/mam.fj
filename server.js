@@ -321,6 +321,39 @@ app.post('/api/auth/register', authRateLimiter, (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+// 2b. Reset Password API (Public + Rate Limited! Verifies username and registered email)
+app.post('/api/auth/reset-password', authRateLimiter, (req, res) => {
+  try {
+    const { username, email, newPassword } = req.body;
+    
+    if (!username || !email || !newPassword) {
+      return res.status(400).json({ success: false, message: 'يرجى ملء جميع الحقول المطلوبة!' });
+    }
+    
+    const user = db.getUser(username);
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'بيانات التحقق غير صحيحة! تأكد من اسم المستخدم والبريد الإلكتروني.' });
+    }
+    
+    if (!user.email || user.email.trim().toLowerCase() !== email.trim().toLowerCase()) {
+      return res.status(400).json({ success: false, message: 'بيانات التحقق غير صحيحة! تأكد من اسم المستخدم والبريد الإلكتروني.' });
+    }
+    
+    // Prevent resetting guest account
+    if (username.toLowerCase() === 'guest') {
+      return res.status(403).json({ success: false, message: 'غير مسموح بتعديل الحساب التجريبي العام!' });
+    }
+
+    const success = db.updateUser(username, null, newPassword);
+    if (success) {
+      res.json({ success: true, message: 'تمت إعادة تعيين كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول.' });
+    } else {
+      res.status(500).json({ success: false, message: 'حدث خطأ غير متوقع أثناء تحديث كلمة المرور.' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 // 3. WebAuthn Registration (Requires Session Validation!)
 app.post('/api/auth/webauthn-register', validateSession, blockGuestUsers, (req, res) => {

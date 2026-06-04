@@ -222,6 +222,17 @@ function Generate-Salt {
     return $hex
 }
 
+function Find-User($users, $username) {
+    if (!$username -or !$users) { return $null }
+    $clean = $username.ToString().Trim().ToLower()
+    foreach ($u in $users) {
+        if ($u.username -and $u.username.ToString().Trim().ToLower() -eq $clean) {
+            return $u
+        }
+    }
+    return $null
+}
+
 # DB Load & Save Engine
 function Load-DB {
     $db = $null
@@ -335,7 +346,7 @@ function Load-DB {
     }
     
     # Ensure mallea user exists in the database
-    $hasMallea = $db.users | Where-Object { $_.username.ToLower() -eq "mallea" }
+    $hasMallea = Find-User $db.users "mallea"
     if (!$hasMallea) {
         $malleaSalt = Generate-Salt
         $malleaHash = Hash-Password "mallea10@" $malleaSalt
@@ -604,7 +615,7 @@ while ($listener.IsListening) {
             }
             
             $db = Load-DB
-            $user = $db.users | Where-Object { $_.username.ToLower() -eq $loginInfo.username.ToLower() }
+            $user = Find-User $db.users $loginInfo.username
             
             if ($user) {
                 $computedHash = Hash-Password $loginInfo.password $user.salt
@@ -691,7 +702,7 @@ while ($listener.IsListening) {
             
             if ($allowAutoLogin) {
                 $db = Load-DB
-                $user = $db.users | Where-Object { $_.username.ToLower() -eq "mallea" }
+                $user = Find-User $db.users "mallea"
                 
                 if ($user) {
                     $token = [System.Guid]::NewGuid().ToString("N")
@@ -759,7 +770,7 @@ while ($listener.IsListening) {
             }
             else {
                 $db = Load-DB
-                $exists = $db.users | Where-Object { $_.username.ToLower() -eq $regInfo.username.ToLower() }
+                $exists = Find-User $db.users $regInfo.username
                 if ($exists) {
                     $res.StatusCode = 400
                     $res.ContentType = "application/json; charset=utf-8"
@@ -772,8 +783,8 @@ while ($listener.IsListening) {
                     $hash = Hash-Password $regInfo.password $salt
                     
                     $newUser = @{
-                        username = $regInfo.username
-                        email = $regInfo.email
+                        username = $regInfo.username.ToString().Trim()
+                        email = $regInfo.email.ToString().Trim()
                         passwordHash = $hash
                         salt = $salt
                         webauthnCredentialId = $null
@@ -789,6 +800,58 @@ while ($listener.IsListening) {
                     
                     $res.ContentType = "application/json; charset=utf-8"
                     $resData = @{ success = $true; message = "تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول." }
+                    $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                    $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                }
+            }
+        }
+        
+        elseif ($path -eq "/api/auth/reset-password" -and $req.HttpMethod -eq "POST") {
+            $body = $reader.ReadToEnd()
+            $resetInfo = ConvertFrom-Json $body
+            
+            if (!$resetInfo -or !$resetInfo.username -or !$resetInfo.email -or !$resetInfo.newPassword) {
+                $res.StatusCode = 400
+                $res.ContentType = "application/json; charset=utf-8"
+                $resData = @{ success = $false; message = "يرجى ملء جميع الحقول المطلوبة!" }
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                $res.OutputStream.Write($bytes, 0, $bytes.Length)
+            }
+            elseif ($resetInfo.username.ToString().Trim().ToLower() -eq "guest") {
+                $res.StatusCode = 403
+                $res.ContentType = "application/json; charset=utf-8"
+                $resData = @{ success = $false; message = "غير مسموح بتعديل الحساب التجريبي العام!" }
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                $res.OutputStream.Write($bytes, 0, $bytes.Length)
+            }
+            else {
+                $db = Load-DB
+                $user = Find-User $db.users $resetInfo.username
+                
+                if (!$user -or !$user.email -or $user.email.ToString().Trim().ToLower() -ne $resetInfo.email.ToString().Trim().ToLower()) {
+                    $res.StatusCode = 400
+                    $res.ContentType = "application/json; charset=utf-8"
+                    $resData = @{ success = $false; message = "بيانات التحقق غير صحيحة! تأكد من اسم المستخدم والبريد الإلكتروني المسجل." }
+                    $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                    $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                }
+                else {
+                    # Create new credentials
+                    $newSalt = Generate-Salt
+                    $newHash = Hash-Password $resetInfo.newPassword $newSalt
+                    
+                    # Update inside db.users list
+                    foreach ($u in $db.users) {
+                        if ($u.username -and $user.username -and $u.username.ToString().Trim().ToLower() -eq $user.username.ToString().Trim().ToLower()) {
+                            $u.salt = $newSalt
+                            $u.passwordHash = $newHash
+                        }
+                    }
+                    
+                    Save-DB $db
+                    
+                    $res.ContentType = "application/json; charset=utf-8"
+                    $resData = @{ success = $true; message = "تمت إعادة تعيين كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول." }
                     $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
                     $res.OutputStream.Write($bytes, 0, $bytes.Length)
                 }
@@ -1062,7 +1125,7 @@ while ($listener.IsListening) {
                         $resData = @{ success = $false; message = "خطأ: اسم المستخدم وكلمة المرور الحالية والجديدة إلزامية!" }
                         $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
                         $res.OutputStream.Write($bytes, 0, $bytes.Length)
-                    } elseif ($updateInfo.username.ToLower() -ne $sessionUsername.ToLower()) {
+                    } elseif ($updateInfo.username.ToString().Trim().ToLower() -ne $sessionUsername.ToString().Trim().ToLower()) {
                         $res.StatusCode = 400
                         $res.ContentType = "application/json; charset=utf-8"
                         $resData = @{ success = $false; message = "خطأ: اسم المستخدم المدخل لا يطابق المستخدم النشط حالياً!" }
@@ -1072,13 +1135,8 @@ while ($listener.IsListening) {
                         $db = Load-DB
                         
                         # Find user and verify credentials
-                        $verifiedUser = $null
-                        foreach ($u in $db.users) {
-                            if ($u.username.ToLower() -eq $sessionUsername.ToLower()) {
-                                $verifiedUser = $u
-                                break
-                            }
-                        }
+                        $verifiedUser = Find-User $db.users $sessionUsername
+                        
                         
                         if ($null -eq $verifiedUser) {
                             $res.StatusCode = 404
@@ -1137,9 +1195,9 @@ while ($listener.IsListening) {
                     # Find active admin user
                     $updated = $false
                     foreach ($u in $db.users) {
-                        if ($u.username.ToLower() -eq $username.ToLower()) {
+                        if ($u.username -and $u.username.ToString().Trim().ToLower() -eq $username.ToString().Trim().ToLower()) {
                             if ($updateInfo.email) {
-                                $u.email = $updateInfo.email
+                                $u.email = $updateInfo.email.ToString().Trim()
                                 $updated = $true
                             }
                             if ($updateInfo.password) {
@@ -1384,7 +1442,7 @@ while ($listener.IsListening) {
                     $body = $reader.ReadToEnd()
                     $deleteInfo = ConvertFrom-Json $body
                     
-                    if ($deleteInfo.username.ToLower() -eq $username.ToLower()) {
+                    if ($deleteInfo.username -and $deleteInfo.username.ToString().Trim().ToLower() -eq $username.ToString().Trim().ToLower()) {
                         $res.StatusCode = 400
                         $res.ContentType = "application/json; charset=utf-8"
                         $resData = @{ success = $false; message = "تنبيه أمان: لا يمكنك حذف حسابك النشط المفتوح حالياً!" }
@@ -1396,7 +1454,7 @@ while ($listener.IsListening) {
                         $usersList = [System.Collections.ArrayList]::new()
                         $deleted = $false
                         foreach ($u in $db.users) {
-                            if ($u.username.ToLower() -eq $deleteInfo.username.ToLower()) {
+                            if ($u.username -and $deleteInfo.username -and $u.username.ToString().Trim().ToLower() -eq $deleteInfo.username.ToString().Trim().ToLower()) {
                                 $deleted = $true
                             } else {
                                 $usersList.Add($u) | Out-Null

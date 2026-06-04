@@ -268,13 +268,20 @@ function resizeCanvas() {
 function toggleAuthForm(mode) {
   const loginCard = document.getElementById('mge-login-card');
   const registerCard = document.getElementById('mge-register-card');
+  const resetCard = document.getElementById('mge-reset-card');
   
   if (mode === 'register') {
     loginCard.style.display = 'none';
     registerCard.style.display = 'flex';
+    if (resetCard) resetCard.style.display = 'none';
+  } else if (mode === 'reset') {
+    loginCard.style.display = 'none';
+    registerCard.style.display = 'none';
+    if (resetCard) resetCard.style.display = 'flex';
   } else {
     loginCard.style.display = 'flex';
     registerCard.style.display = 'none';
+    if (resetCard) resetCard.style.display = 'none';
   }
   
   // Play subtle sound feedback
@@ -282,10 +289,97 @@ function toggleAuthForm(mode) {
   playBeepSound(600, 0.05);
 }
 
+// Toggle password input visibility (switching type between 'password' and 'text')
+function togglePasswordVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈';
+    btn.setAttribute('title', 'إخفاء كلمة المرور');
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁️';
+    btn.setAttribute('title', 'إظهار كلمة المرور');
+  }
+  
+  // Play subtle feedback beep
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  playBeepSound(500, 0.04);
+}
+
+// Submit Password Reset Request to Server API (no session required, verifies username and email)
+function submitPasswordReset() {
+  const usernameVal = document.getElementById('reset-username').value.trim();
+  const emailVal = document.getElementById('reset-email').value.trim();
+  const passwordVal = document.getElementById('reset-password').value;
+  const confirmVal = document.getElementById('reset-password-confirm').value;
+
+  if (!usernameVal || !emailVal || !passwordVal || !confirmVal) {
+    alert("⚠️ يرجى ملء جميع الحقول المطلوبة!");
+    return;
+  }
+
+  // Basic regex validation
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!usernameRegex.test(usernameVal)) {
+    alert("⚠️ اسم المستخدم غير صالح! يجب أن يتكون من 3-20 حرفاً إنجليزياً أو أرقام أو شرطة سفلية فقط.");
+    return;
+  }
+  if (!emailRegex.test(emailVal)) {
+    alert("⚠️ يرجى إدخال بريد إلكتروني صالح!");
+    return;
+  }
+  if (passwordVal.length < 6) {
+    alert("⚠️ كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل!");
+    return;
+  }
+  if (passwordVal !== confirmVal) {
+    alert("⚠️ كلمات المرور غير متطابقة!");
+    return;
+  }
+
+  // Play submit sound
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  playBeepSound(400, 0.1, 'sine');
+
+  fetch('/api/auth/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: usernameVal,
+      email: emailVal,
+      newPassword: passwordVal
+    })
+  })
+  .then(res => res.json())
+  .then(resData => {
+    if (resData.success) {
+      alert("🎉 " + resData.message);
+      // Clear fields
+      document.getElementById('reset-username').value = '';
+      document.getElementById('reset-email').value = '';
+      document.getElementById('reset-password').value = '';
+      document.getElementById('reset-password-confirm').value = '';
+      // Switch back to login form
+      toggleAuthForm('login');
+    } else {
+      alert("⚠️ " + resData.message);
+    }
+  })
+  .catch(err => {
+    console.error("Password reset failed:", err);
+    alert("⚠️ حدث خطأ أثناء التواصل مع السيرفر.");
+  });
+}
+
 // Submit secure User Registration to Server API
 function submitRegistration() {
-  const usernameVal = document.getElementById('reg-username').value;
-  const emailVal = document.getElementById('reg-email').value;
+  const usernameVal = document.getElementById('reg-username').value.trim();
+  const emailVal = document.getElementById('reg-email').value.trim();
   const passwordVal = document.getElementById('reg-password').value;
   const confirmVal = document.getElementById('reg-password-confirm').value;
   const termsCheckbox = document.getElementById('reg-terms');
@@ -447,7 +541,7 @@ function applyGuestLimitations(username) {
 
 // Submit standard Username / Password Login
 function submitPasswordLogin() {
-  const userField = document.getElementById('login-username').value;
+  const userField = document.getElementById('login-username').value.trim();
   const passField = document.getElementById('login-password').value;
   
   fetch('/api/auth/login', {
