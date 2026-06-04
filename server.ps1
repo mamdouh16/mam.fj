@@ -362,7 +362,7 @@ function Save-DB($dbData) {
 $sslCert = $null
 try {
     # Search for existing certificate using array wrapper to avoid single-object .Count issue
-    $certs = @(Get-ChildItem -Path "cert:\CurrentUser\My" | Where-Object { $_.FriendlyName -eq "MGE Portal SSL v2" })
+    $certs = @(Get-ChildItem -Path "cert:\CurrentUser\My" | Where-Object { $_.FriendlyName -eq "MGE Portal SSL v3" })
     if ($certs.Length -gt 0) {
         $sslCert = $certs[0]
     } else {
@@ -372,6 +372,14 @@ try {
             $lanIps = [System.Net.Dns]::GetHostAddresses($hostName) | 
                 Where-Object { $_.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork } | 
                 Select-Object -ExpandProperty IPAddressToString
+
+            $primaryIp = "127.0.0.1"
+            foreach ($ip in $lanIps) {
+                if ($ip -notlike "127.*" -and $ip -notlike "169.254.*") {
+                    $primaryIp = $ip
+                    break
+                }
+            }
 
             $sanBuilder = New-Object System.Security.Cryptography.X509Certificates.SubjectAlternativeNameBuilder
             $sanBuilder.AddDnsName("localhost")
@@ -388,7 +396,7 @@ try {
                 }
             }
 
-            $subject = New-Object System.Security.Cryptography.X509Certificates.X500DistinguishedName("CN=localhost, O=RetroPlay, CN=localhost")
+            $subject = New-Object System.Security.Cryptography.X509Certificates.X500DistinguishedName("CN=$primaryIp, O=RetroPlay, CN=$primaryIp")
             $rsa = [System.Security.Cryptography.RSA]::Create(2048)
             $request = New-Object System.Security.Cryptography.X509Certificates.CertificateRequest($subject, $rsa, [System.Security.Cryptography.HashAlgorithmName]::SHA256, [System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
 
@@ -404,7 +412,7 @@ try {
             $sanExtension = $sanBuilder.Build()
             [void]$request.CertificateExtensions.Add($sanExtension)
 
-            $basicConstraints = New-Object System.Security.Cryptography.X509Certificates.X509BasicConstraintsExtension($true, $false, 0, $true)
+            $basicConstraints = New-Object System.Security.Cryptography.X509Certificates.X509BasicConstraintsExtension($false, $false, 0, $false)
             [void]$request.CertificateExtensions.Add($basicConstraints)
 
             $notBefore = [DateTimeOffset]::Now.AddDays(-1)
@@ -414,7 +422,7 @@ try {
             $pfxBytes = $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Pfx, "mallea_portal")
             $keyStorageFlags = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]21
             $persistedCert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfxBytes, "mallea_portal", $keyStorageFlags)
-            $persistedCert.FriendlyName = "MGE Portal SSL v2"
+            $persistedCert.FriendlyName = "MGE Portal SSL v3"
 
             $store = New-Object System.Security.Cryptography.X509Certificates.X509Store("My", "CurrentUser")
             $store.Open("ReadWrite")
@@ -434,7 +442,7 @@ try {
                     if ($lanIp -notlike "127.*" -and $lanIp -notlike "169.254.*") { $dnsNames += $lanIp }
                 }
             } catch {}
-            $sslCert = New-SelfSignedCertificate -DnsName $dnsNames -CertStoreLocation "cert:\CurrentUser\My" -FriendlyName "MGE Portal SSL v2" -Provider "Microsoft RSA SChannel Cryptographic Provider" -KeyExportPolicy Exportable -NotAfter (Get-Date).AddYears(2) -ErrorAction SilentlyContinue
+            $sslCert = New-SelfSignedCertificate -DnsName $dnsNames -CertStoreLocation "cert:\CurrentUser\My" -FriendlyName "MGE Portal SSL v3" -Provider "Microsoft RSA SChannel Cryptographic Provider" -KeyExportPolicy Exportable -NotAfter (Get-Date).AddYears(2) -ErrorAction SilentlyContinue
         }
     }
 } catch {
@@ -1231,80 +1239,127 @@ while ($listener.IsListening) {
                 $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
                 $res.OutputStream.Write($bytes, 0, $bytes.Length)
             } else {
-                $username = $activeSessions[$token].username
-                if ($username -eq "guest") {
-                    $res.StatusCode = 403
+                $body = $reader.ReadToEnd()
+                $installInfo = ConvertFrom-Json $body
+                
+                # Preset game catalogue metadata
+                $catalogue = @{
+                    "store_game_1" = @{ name = "µCity PSX (لعبة بناء المدن الكلاسيكية الكاملة)"; filename = "ucity_psx.bin"; size = 2516582 }
+                    "store_game_2" = @{ name = "PSX Doom Demo (لعبة إطلاق النار ثلاثية الأبعاد الكلاسيكية)"; filename = "psx_doom.bin"; size = 4301289 }
+                    "store_game_3" = @{ name = "Super Block Boy (لعبة مغامرات ومنصات ريترو)"; filename = "block_boy.bin"; size = 1887436 }
+                    "store_game_4" = @{ name = "Hubble Space Hunter (محاكاة قتال الفضاء ثلاثي الأبعاد)"; filename = "hubble_space.bin"; size = 1258291 }
+                    "store_game_5" = @{ name = "Formula Retro GP (لعبة سباق سيارات نيون ريترو كاملة)"; filename = "formula_retro_gp.bin"; size = 3355443 }
+                    "store_game_6" = @{ name = "Memory Card formatter (أداة إدارة بطاقات الذاكرة)"; filename = "memcard_tool.bin"; size = 950123 }
+                }
+                
+                if (!$installInfo -or !$installInfo.gameId -or !$catalogue.ContainsKey($installInfo.gameId)) {
+                    $res.StatusCode = 400
                     $res.ContentType = "application/json; charset=utf-8"
-                    $resData = @{ success = $false; message = "عذراً: الحساب التجريبي محدود الصلاحية! يرجى تسجيل حساب رسمي لتنزيل الألعاب لحسابك." }
+                    $resData = @{ success = $false; message = "اللعبة غير متوفرة في المتجر!" }
                     $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
                     $res.OutputStream.Write($bytes, 0, $bytes.Length)
                 } else {
-                    $body = $reader.ReadToEnd()
-                    $installInfo = ConvertFrom-Json $body
+                    $game = $catalogue[$installInfo.gameId]
                     
-                    # Preset game catalogue metadata
-                    $catalogue = @{
-                        "store_game_1" = @{ name = "µCity PSX (لعبة بناء المدن الكلاسيكية الكاملة)"; filename = "ucity_psx.bin"; size = 2516582 }
-                        "store_game_2" = @{ name = "PSX Doom Demo (لعبة إطلاق النار ثلاثية الأبعاد الكلاسيكية)"; filename = "psx_doom.bin"; size = 4301289 }
-                        "store_game_3" = @{ name = "Super Block Boy (لعبة مغامرات ومنصات ريترو)"; filename = "block_boy.bin"; size = 1887436 }
-                        "store_game_4" = @{ name = "Hubble Space Hunter (محاكاة قتال الفضاء ثلاثي الأبعاد)"; filename = "hubble_space.bin"; size = 1258291 }
-                        "store_game_5" = @{ name = "Formula Retro GP (لعبة سباق سيارات نيون ريترو كاملة)"; filename = "formula_retro_gp.bin"; size = 3355443 }
-                        "store_game_6" = @{ name = "Memory Card formatter (أداة إدارة بطاقات الذاكرة)"; filename = "memcard_tool.bin"; size = 950123 }
+                    # Create simulated bin file if not exists
+                    $filePath = Join-Path $uploadsDir $game.filename
+                    if (!(Test-Path $filePath)) {
+                        Set-Content -Path $filePath -Value ("MGE Simulator ROM Content for " + $game.name)
                     }
                     
-                    if (!$installInfo -or !$installInfo.gameId -or !$catalogue.ContainsKey($installInfo.gameId)) {
-                        $res.StatusCode = 400
+                    $db = Load-DB
+                    
+                    # Check if already installed
+                    $alreadyInstalled = $false
+                    foreach ($r in $db.roms) {
+                        if ($r.filename -eq $game.filename) { $alreadyInstalled = $true }
+                    }
+                    
+                    if ($alreadyInstalled) {
                         $res.ContentType = "application/json; charset=utf-8"
-                        $resData = @{ success = $false; message = "اللعبة غير متوفرة في المتجر!" }
+                        $resData = @{ success = $false; message = "هذه اللعبة مضافة بالفعل في مكتبتك السحابية!" }
                         $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
                         $res.OutputStream.Write($bytes, 0, $bytes.Length)
                     } else {
-                        $game = $catalogue[$installInfo.gameId]
-                        
-                        # Create simulated bin file if not exists
-                        $filePath = Join-Path $uploadsDir $game.filename
-                        if (!(Test-Path $filePath)) {
-                            Set-Content -Path $filePath -Value ("MGE Simulator ROM Content for " + $game.name)
+                        # Add to user's ROMs array
+                        $newRom = @{
+                            id = "rom_" + $now
+                            name = $game.name
+                            size = $game.size
+                            filename = $game.filename
+                            uploadDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+                            console = "PS1"
+                            preloaded = $false
                         }
                         
-                        $db = Load-DB
+                        $romsList = [System.Collections.ArrayList]::new()
+                        foreach ($r in $db.roms) { $romsList.Add($r) | Out-Null }
+                        $romsList.Add($newRom) | Out-Null
+                        $db.roms = $romsList.ToArray()
                         
-                        # Check if already installed
-                        $alreadyInstalled = $false
-                        foreach ($r in $db.roms) {
-                            if ($r.filename -eq $game.filename) { $alreadyInstalled = $true }
-                        }
+                        Save-DB $db
                         
-                        if ($alreadyInstalled) {
-                            $res.ContentType = "application/json; charset=utf-8"
-                            $resData = @{ success = $false; message = "هذه اللعبة مضافة بالفعل في مكتبتك السحابية!" }
-                            $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
-                            $res.OutputStream.Write($bytes, 0, $bytes.Length)
-                        } else {
-                            # Add to user's ROMs array
-                            $newRom = @{
-                                id = "rom_" + $now
-                                name = $game.name
-                                size = $game.size
-                                filename = $game.filename
-                                uploadDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-                                console = "PS1"
-                                preloaded = $false
-                            }
-                            
-                            $romsList = [System.Collections.ArrayList]::new()
-                            foreach ($r in $db.roms) { $romsList.Add($r) | Out-Null }
-                            $romsList.Add($newRom) | Out-Null
-                            $db.roms = $romsList.ToArray()
-                            
-                            Save-DB $db
-                            
-                            $res.ContentType = "application/json; charset=utf-8"
-                            $resData = @{ success = $true; message = "تم تحميل وإضافة لعبة '$($game.name)' لمكتبتك السحابية بنجاح! يمكنك الآن تشغيلها من شاشة المحاكي الرئيسية 🚀" }
-                            $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
-                            $res.OutputStream.Write($bytes, 0, $bytes.Length)
-                        }
+                        $res.ContentType = "application/json; charset=utf-8"
+                        $resData = @{ success = $true; message = "تم تحميل وإضافة لعبة '$($game.name)' لمكتبتك السحابية بنجاح! يمكنك الآن تشغيلها من شاشة المحاكي الرئيسية 🚀" }
+                        $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                        $res.OutputStream.Write($bytes, 0, $bytes.Length)
                     }
+                }
+            }
+        }
+
+        # 7c. Add ROM Link API (POST)
+        elseif ($path -eq "/api/roms/add-link" -and $req.HttpMethod -eq "POST") {
+            $authHeader = $req.Headers["Authorization"]
+            $token = ""
+            if ($authHeader -and $authHeader.StartsWith("Bearer ")) { $token = $authHeader.Substring(7) }
+            
+            if (!$activeSessions.ContainsKey($token) -or $now -gt $activeSessions[$token].expiresAt) {
+                $res.StatusCode = 401
+                $res.ContentType = "application/json; charset=utf-8"
+                $resData = @{ success = $false; message = "غير مصرح: انتهت صلاحية الجلسة!" }
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                $res.OutputStream.Write($bytes, 0, $bytes.Length)
+            } else {
+                $body = $reader.ReadToEnd()
+                $linkInfo = ConvertFrom-Json $body
+                
+                if (!$linkInfo -or !$linkInfo.name -or !$linkInfo.url) {
+                    $res.StatusCode = 400
+                    $res.ContentType = "application/json; charset=utf-8"
+                    $resData = @{ success = $false; message = "يرجى إدخال اسم اللعبة ورابط التحميل المباشر!" }
+                    $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                    $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                } elseif (!$linkInfo.url.StartsWith("http://") -and !$linkInfo.url.StartsWith("https://")) {
+                    $res.StatusCode = 400
+                    $res.ContentType = "application/json; charset=utf-8"
+                    $resData = @{ success = $false; message = "يجب أن يبدأ رابط التحميل بـ http:// أو https://" }
+                    $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                    $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                } else {
+                    $db = Load-DB
+                    
+                    $newRom = @{
+                        id = "rom_" + $now
+                        name = $linkInfo.name
+                        size = 0
+                        filename = $linkInfo.url
+                        uploadDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+                        console = "PS1"
+                        preloaded = $false
+                    }
+                    
+                    $romsList = [System.Collections.ArrayList]::new()
+                    foreach ($r in $db.roms) { $romsList.Add($r) | Out-Null }
+                    $romsList.Add($newRom) | Out-Null
+                    $db.roms = $romsList.ToArray()
+                    
+                    Save-DB $db
+                    
+                    $res.ContentType = "application/json; charset=utf-8"
+                    $resData = @{ success = $true; message = "تم ربط اللعبة `"$($linkInfo.name)`" بالرابط المباشر بنجاح!" }
+                    $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                    $res.OutputStream.Write($bytes, 0, $bytes.Length)
                 }
             }
         }

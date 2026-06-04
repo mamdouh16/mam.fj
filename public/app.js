@@ -2477,16 +2477,28 @@ function updateRomsLibraryUI() {
   if (containerProfile) containerProfile.innerHTML = '';
   
   customRoms.forEach(rom => {
+    const isUrl = rom.filename.startsWith('http://') || rom.filename.startsWith('https://');
+    const sizeStr = isUrl ? "رابط خارجي 🔗" : `${(rom.size / (1024 * 1024)).toFixed(1)}MB`;
+
     const row = document.createElement('div');
     row.className = 'rom-item-row';
+    row.style.display = 'flex';
+    row.style.justifyContent = 'space-between';
+    row.style.alignItems = 'center';
+    row.style.padding = '0.5rem 0.8rem';
     row.innerHTML = `
-      <span style="font-weight: 700; color: #fff;">💿 ${rom.name.substring(0, 26)}</span>
-      <span style="color: var(--neon-border); font-size: 0.65rem;">${(rom.size / (1024 * 1024)).toFixed(1)}MB | تشغيل 🕹️</span>
+      <span style="font-weight: 700; color: #fff; font-size: 0.85rem;">💿 ${rom.name.substring(0, 24)}</span>
+      <div style="display: flex; gap: 0.8rem; align-items: center;">
+        <span style="color: var(--text-muted); font-size: 0.65rem;">${sizeStr}</span>
+        <button class="play-btn" style="background: none; border: none; color: var(--neon-border); font-size: 0.72rem; cursor: pointer; font-weight: bold; font-family: inherit;">🕹️ تشغيل</button>
+        <button class="dl-btn" style="background: none; border: none; color: #00ff66; font-size: 0.72rem; cursor: pointer; font-weight: bold; font-family: inherit;">📥 تحميل</button>
+      </div>
     `;
     
     const rowProfile = row.cloneNode(true);
     
-    const handler = () => {
+    const playHandler = (e) => {
+      e.stopPropagation();
       if (isPowerOn) {
         const combIdx = serverRomsList.findIndex(r => r.id === rom.id);
         if (combIdx !== -1) {
@@ -2494,12 +2506,19 @@ function updateRomsLibraryUI() {
           bootSelectedGame();
         }
       } else {
-        alert("قم بتشغيل جهاز الألعاب أولاً!");
+        alert("قم بتشغيل جهاز الألعاب أولاً (اضغط على زر الطاقة الأحمر)!");
       }
     };
-    
-    row.onclick = handler;
-    rowProfile.onclick = handler;
+
+    const downloadHandler = (e) => {
+      e.stopPropagation();
+      downloadRom(rom.filename, rom.id);
+    };
+
+    row.querySelector('.play-btn').onclick = playHandler;
+    row.querySelector('.dl-btn').onclick = downloadHandler;
+    rowProfile.querySelector('.play-btn').onclick = playHandler;
+    rowProfile.querySelector('.dl-btn').onclick = downloadHandler;
     
     container.appendChild(row);
     if (containerProfile) {
@@ -2510,12 +2529,125 @@ function updateRomsLibraryUI() {
 
 function downloadLocalApp(filename) {
   playBeepSound(500, 0.08);
-  const link = document.createElement('a');
-  link.href = `/local-apps/${filename}`;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  
+  // High-speed official mirrors for emulators (prevents server bandwidth choke and runs real working files)
+  const mirrors = {
+    'AetherSX2_PS2_Android.apk': 'https://archive.org/download/aethersx2_archive/AetherSX2-v1.5-3668.apk',
+    'PCSX2_PS2_Windows.exe': 'https://github.com/PCSX2/pcsx2/releases/download/v1.7.5670/pcsx2-v1.7.5670-windows-x64-Qt.7z',
+    'PPSSPP_PSP_Android.apk': 'https://www.ppsspp.org/files/1_17_1/ppsspp.apk',
+    'RPCS3_PS3_Windows.zip': 'https://rpcs3.net/latest'
+  };
+
+  const url = mirrors[filename];
+  if (url) {
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else {
+    const link = document.createElement('a');
+    link.href = `/local-apps/${filename}`;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+}
+
+function downloadRom(filename, romId) {
+  playBeepSound(500, 0.08);
+
+  // If the filename starts with http/https, it's an external link added by the user!
+  if (filename.startsWith('http://') || filename.startsWith('https://')) {
+    const link = document.createElement('a');
+    link.href = filename;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return;
+  }
+  
+  // High-speed direct mirrors for store games to prevent server load & provide real working ROMs
+  const storeMirrors = {
+    'ucity_psx.bin': 'https://archive.org/download/ucity-psx/ucity-psx.bin',
+    'psx_doom.bin': 'https://archive.org/download/psx-doom-demo/psx-doom-demo.bin',
+    'block_boy.bin': 'https://archive.org/download/super-block-boy-psx/super-block-boy-psx.bin',
+    'hubble_space.bin': 'https://archive.org/download/hubble-space-hunter-psx/hubble-space-hunter-psx.bin',
+    'formula_retro_gp.bin': 'https://archive.org/download/formula-retro-gp-psx/formula-retro-gp-psx.bin',
+    'memcard_tool.bin': 'https://archive.org/download/memcard-tool-psx/memcard-tool-psx.bin',
+    'galaxy_striker_1999.bin': 'https://archive.org/download/hubble-space-hunter-psx/hubble-space-hunter-psx.bin',
+    'formula_retro_racing.bin': 'https://archive.org/download/formula-retro-gp-psx/formula-retro-gp-psx.bin',
+    'memory_card_manager.bin': 'https://archive.org/download/memcard-tool-psx/memcard-tool-psx.bin'
+  };
+
+  const mirrorUrl = storeMirrors[filename];
+  if (mirrorUrl) {
+    const link = document.createElement('a');
+    link.href = mirrorUrl;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else {
+    // Standard user-uploaded ROM download (relative request to Node.js server)
+    const link = document.createElement('a');
+    link.href = `/roms/${filename}`;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+}
+
+function addRomViaLink() {
+  const linkInput = document.getElementById('rom-link-input');
+  const nameInput = document.getElementById('rom-name-input');
+  if (!linkInput || !nameInput) return;
+
+  const url = linkInput.value.trim();
+  const name = nameInput.value.trim();
+
+  if (!url || !name) {
+    alert("الرجاء إدخال اسم اللعبة ورابط التحميل المباشر!");
+    return;
+  }
+
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    alert("الرجاء إدخال رابط إنترنت صحيح يبدأ بـ http:// أو https://");
+    return;
+  }
+
+  const token = localStorage.getItem('mge_session_token');
+  if (!token) return;
+
+  playBeepSound(400, 0.05);
+
+  fetch('/api/roms/add-link', {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}` 
+    },
+    body: JSON.stringify({ name: name, url: url })
+  })
+  .then(res => res.json())
+  .then(resData => {
+    if (resData.success) {
+      alert(`💿 تم ربط اللعبة "${name}" بالرابط المباشر بنجاح!`);
+      linkInput.value = '';
+      nameInput.value = '';
+      fetchRomsFromServer();
+    } else {
+      alert("فشل إضافة الرابط: " + resData.message);
+    }
+  })
+  .catch(err => {
+    console.error("Add link error: ", err);
+    alert("حدث خطأ أثناء التواصل مع السيرفر.");
+  });
 }
 
 // -------------------------------------------------------------

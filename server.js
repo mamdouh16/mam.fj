@@ -370,6 +370,74 @@ app.post('/api/roms/upload', validateSession, blockGuestUsers, upload.single('ro
   res.status(400).json({ success: false, message: error.message });
 });
 
+// Add a new ROM via Direct Link (bypasses server storage limits entirely)
+app.post('/api/roms/add-link', validateSession, (req, res) => {
+  try {
+    const { name, url } = req.body;
+    
+    if (!name || !url) {
+      return res.status(400).json({ success: false, message: 'يرجى إدخال اسم اللعبة ورابط التحميل المباشر!' });
+    }
+    
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return res.status(400).json({ success: false, message: 'يجب أن يبدأ رابط التحميل بـ http:// أو https://' });
+    }
+    
+    // Add to database with size = 0, filename = url
+    const newRom = db.addRom(name, 0, url);
+    
+    res.json({
+      success: true,
+      message: `تم ربط اللعبة "${name}" بالرابط المباشر بنجاح!`,
+      data: newRom
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Install free store games instantly to the console
+app.post('/api/store/install', validateSession, (req, res) => {
+  try {
+    const { gameId } = req.body;
+    
+    const catalogue = {
+      "store_game_1": { name: "µCity PSX (لعبة بناء المدن الكلاسيكية الكاملة)", filename: "ucity_psx.bin", size: 2516582 },
+      "store_game_2": { name: "PSX Doom Demo (لعبة إطلاق النار ثلاثية الأبعاد الكلاسيكية)", filename: "psx_doom.bin", size: 4301289 },
+      "store_game_3": { name: "Super Block Boy (لعبة مغامرات ومنصات ريترو)", filename: "block_boy.bin", size: 1887436 },
+      "store_game_4": { name: "Hubble Space Hunter (محاكاة قتال الفضاء ثلاثي الأبعاد)", filename: "hubble_space.bin", size: 1258291 },
+      "store_game_5": { name: "Formula Retro GP (لعبة سباق سيارات نيون ريترو كاملة)", filename: "formula_retro_gp.bin", size: 3355443 },
+      "store_game_6": { name: "Memory Card formatter (أداة إدارة بطاقات الذاكرة)", filename: "memcard_tool.bin", size: 950123 }
+    };
+    
+    if (!gameId || !catalogue[gameId]) {
+      return res.status(400).json({ success: false, message: 'اللعبة غير متوفرة في المتجر!' });
+    }
+    
+    const game = catalogue[gameId];
+    
+    // Check if already installed
+    const roms = db.getRoms();
+    const alreadyInstalled = roms.some(r => r.filename === game.filename);
+    
+    if (alreadyInstalled) {
+      return res.json({ success: false, message: 'هذه اللعبة مضافة بالفعل في مكتبتك السحابية!' });
+    }
+    
+    // Add to user's ROMs array
+    const newRom = db.addRom(game.name, game.size, game.filename);
+    
+    res.json({
+      success: true,
+      message: `تم تحميل وإضافة لعبة '${game.name}' لمكتبتك السحابية بنجاح! يمكنك الآن تشغيلها من شاشة المحاكي الرئيسية 🚀`,
+      data: newRom
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+
 // Get all saves/memory cards
 app.get('/api/saves', validateSession, (req, res) => {
   try {
