@@ -355,7 +355,7 @@ function Load-DB {
 
 function Save-DB($dbData) {
     $json = ConvertTo-Json $dbData -Depth 10 -Compress
-    Set-Content -Path $dbPath -Value $json -Encoding utf8
+    [System.IO.File]::WriteAllText($dbPath, $json, [System.Text.Encoding]::UTF8)
 }
 
 # Start listening
