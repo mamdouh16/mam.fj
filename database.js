@@ -6,7 +6,8 @@ const DB_PATH = path.join(__dirname, 'database.json');
 
 // Internal credentials security derivation function
 function hashPassword(password, salt) {
-  return crypto.pbkdf2Sync(password, salt, 210000, 64, 'sha512').toString('hex');
+  const saltBuffer = (typeof salt === 'string' && salt.length === 32) ? Buffer.from(salt, 'hex') : salt;
+  return crypto.pbkdf2Sync(password, saltBuffer, 210000, 64, 'sha512').toString('hex');
 }
 
 // Generate a random secure salt

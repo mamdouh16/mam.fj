@@ -3,7 +3,7 @@
     {
       "username": "admin",
       "email": "admin@mge.com",
-      "passwordHash": "f7a4f05ad53941c3d1cc81f60bcce10a980ba06a04e1283c284651ffe426c1d87bccb7444748bc595c21c25f9c5648f16288c399979e5232014fafe4354507de",
+      "passwordHash": "f7149315b54008a914bd1f34c663882d8438493d9a19932f759001557f064c30ecf57aaeb37a73d4167f74c9d827919e592ead4e33f4b4994348dec53507e8f7",
       "salt": "8cbab94b07da586653d12c7c2d20105a",
       "webauthnCredentialId": null
     },
