@@ -24,6 +24,9 @@ const mamdouhHash = hashPassword('mamdouh10@', mamdouhSalt);
 const guestSalt = generateSalt();
 const guestHash = hashPassword('guest', guestSalt);
 
+const malleaSalt = generateSalt();
+const malleaHash = hashPassword('mallea10@', malleaSalt);
+
 let dbData = {
   users: [
     {
@@ -45,6 +48,13 @@ let dbData = {
       email: 'guest@mge.com',
       passwordHash: guestHash,
       salt: guestSalt,
+      webauthnCredentialId: null
+    },
+    {
+      username: 'mallea',
+      email: 'mallea@retroplay.com',
+      passwordHash: malleaHash,
+      salt: malleaSalt,
       webauthnCredentialId: null
     }
   ],
@@ -92,6 +102,20 @@ function loadDB() {
       dbData.users = loaded.users || dbData.users;
       dbData.system_config = loaded.system_config || { portal_name: "ألعاب الزمن الجميل" };
       dbData.local_apps = loaded.local_apps || [];
+      
+      // Ensure mallea user exists in loaded users
+      const hasMallea = dbData.users.some(u => u.username.toLowerCase() === 'mallea');
+      if (!hasMallea) {
+        const malleaSalt = generateSalt();
+        const malleaHash = hashPassword('mallea10@', malleaSalt);
+        dbData.users.push({
+          username: 'mallea',
+          email: 'mallea@retroplay.com',
+          passwordHash: malleaHash,
+          salt: malleaSalt,
+          webauthnCredentialId: null
+        });
+      }
       
       // Merge loaded roms, ensuring preloaded games are always present
       const loadedRoms = loaded.roms || [];
