@@ -2540,7 +2540,6 @@ function drawHighwayGraphics() {
     ctx.fillText("PRESS 'SELECT' FOR MAIN BIOS MENU", canvas.width / 2, canvas.height / 2 + 90);
     ctx.textAlign = 'left';
   }
-  }
 }
 
 // ============================================================================
