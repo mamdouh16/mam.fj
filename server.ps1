@@ -12,7 +12,7 @@ $listener = [System.Net.HttpListener]::new()
 $listener.Prefixes.Add("http://localhost:$backendPort/")
 $listener.Prefixes.Add("http://127.0.0.1:$backendPort/")
 
-$baseDir = Get-Location
+$baseDir = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
 $publicDir = Join-Path $baseDir "public"
 $downloadsDir = Join-Path $baseDir "downloads"
 $uploadsDir = Join-Path $baseDir "uploads"
@@ -52,6 +52,8 @@ try {
 # In-Memory Active Sessions & Rate Limiting
 $activeSessions = @{} # Token -> { username, expiresAt }
 $loginAttempts = @{}  # IP -> { count, lastAttempt }
+$registerAttempts = @{} # IP -> { count, lastAttempt }
+$resetAttempts = @{}    # IP -> { count, lastAttempt }
 
 # Core Security Provider Helper
 # Complies with .NET 4.8 / Windows PowerShell 5.1 out-of-the-box using compiled C# helper for maximum performance!
@@ -100,6 +102,87 @@ if ($null -eq ("SecurityProvider" -as [type])) {
     }
 "@
     Add-Type -TypeDefinition $Source
+}
+
+if ($null -eq ("MultipartParser" -as [type])) {
+    $parserSource = @"
+    using System;
+    using System.IO;
+    using System.Text;
+
+    public class MultipartParser {
+        public static bool Parse(byte[] bodyBytes, string contentType, out string filename, out byte[] fileData) {
+            filename = "";
+            fileData = null;
+            try {
+                if (string.IsNullOrEmpty(contentType) || !contentType.StartsWith("multipart/form-data")) {
+                    return false;
+                }
+                
+                string[] parts = contentType.Split(';');
+                string boundary = null;
+                foreach (var part in parts) {
+                    var trimmed = part.Trim();
+                    if (trimmed.StartsWith("boundary=")) {
+                        boundary = "--" + trimmed.Substring(9);
+                        break;
+                    }
+                }
+                
+                if (boundary == null) return false;
+                
+                byte[] boundaryBytes = Encoding.UTF8.GetBytes(boundary);
+                int index = IndexOf(bodyBytes, boundaryBytes, 0);
+                if (index == -1) return false;
+                
+                int headerStartIndex = index + boundaryBytes.Length;
+                byte[] doubleLineBreak = new byte[] { 13, 10, 13, 10 };
+                int headerEndIndex = IndexOf(bodyBytes, doubleLineBreak, headerStartIndex);
+                if (headerEndIndex == -1) return false;
+                
+                string headersStr = Encoding.UTF8.GetString(bodyBytes, headerStartIndex, headerEndIndex - headerStartIndex);
+                
+                int filenameIndex = headersStr.IndexOf("filename=\"", StringComparison.OrdinalIgnoreCase);
+                if (filenameIndex == -1) return false;
+                
+                int filenameEnd = headersStr.IndexOf("\"", filenameIndex + 10);
+                if (filenameEnd == -1) return false;
+                filename = headersStr.Substring(filenameIndex + 10, filenameEnd - (filenameIndex + 10));
+                
+                int contentStartIndex = headerEndIndex + 4;
+                int nextBoundaryIndex = IndexOf(bodyBytes, boundaryBytes, contentStartIndex);
+                if (nextBoundaryIndex == -1) return false;
+                
+                int contentLen = nextBoundaryIndex - contentStartIndex;
+                if (contentLen >= 2 && bodyBytes[nextBoundaryIndex - 2] == 13 && bodyBytes[nextBoundaryIndex - 1] == 10) {
+                    contentLen -= 2;
+                }
+                
+                fileData = new byte[contentLen];
+                Buffer.BlockCopy(bodyBytes, contentStartIndex, fileData, 0, contentLen);
+                return true;
+            }
+            catch {
+                return false;
+            }
+        }
+        
+        private static int IndexOf(byte[] src, byte[] pattern, int start) {
+            for (int i = start; i <= src.Length - pattern.Length; i++) {
+                bool match = true;
+                for (int j = 0; j < pattern.Length; j++) {
+                    if (src[i + j] != pattern[j]) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) return i;
+            }
+            return -1;
+        }
+    }
+"@
+    Add-Type -TypeDefinition $parserSource
 }
 
 if ($null -eq ("TcpProxy" -as [type])) {
@@ -188,6 +271,20 @@ if ($null -eq ("TcpProxy" -as [type])) {
                                         request = request.Substring(0, hostIndex) + newHostLine + xForwardedLine + request.Substring(lineEndIndex);
                                     }
                                 }
+                                
+                                if (request.IndexOf("Connection:", StringComparison.OrdinalIgnoreCase) >= 0) {
+                                    int connIndex = request.IndexOf("Connection:", StringComparison.OrdinalIgnoreCase);
+                                    int connLineEnd = request.IndexOf("\r\n", connIndex);
+                                    if (connLineEnd > connIndex) {
+                                        request = request.Substring(0, connIndex) + "Connection: close" + request.Substring(connLineEnd);
+                                    }
+                                } else {
+                                    int firstLineEnd = request.IndexOf("\r\n");
+                                    if (firstLineEnd >= 0) {
+                                        request = request.Substring(0, firstLineEnd) + "\r\nConnection: close" + request.Substring(firstLineEnd);
+                                    }
+                                }
+                                
                                 byte[] modifiedBuffer = Encoding.UTF8.GetBytes(request);
                                 await targetStream.WriteAsync(modifiedBuffer, 0, modifiedBuffer.Length);
                                 await activeClientStream.CopyToAsync(targetStream);
@@ -587,7 +684,18 @@ while ($listener.IsListening) {
         }
         elseif ($path.StartsWith("/local-apps/")) {
             $filename = $path.Substring(12)
-            $filePath = Join-Path $downloadsDir $filename
+            $safeName = [System.IO.Path]::GetFileName($filename)
+            $filePath = Join-Path $downloadsDir $safeName
+            if (Test-Path $filePath) {
+                $bytes = [System.IO.File]::ReadAllBytes($filePath)
+                $res.ContentType = "application/octet-stream"
+                $res.OutputStream.Write($bytes, 0, $bytes.Length)
+            } else { $res.StatusCode = 404 }
+        }
+        elseif ($path.StartsWith("/roms/")) {
+            $filename = $path.Substring(6)
+            $safeName = [System.IO.Path]::GetFileName($filename)
+            $filePath = Join-Path $uploadsDir $safeName
             if (Test-Path $filePath) {
                 $bytes = [System.IO.File]::ReadAllBytes($filePath)
                 $res.ContentType = "application/octet-stream"
@@ -740,6 +848,26 @@ while ($listener.IsListening) {
         }
         
         elseif ($path -eq "/api/auth/register" -and $req.HttpMethod -eq "POST") {
+            if ($registerAttempts.ContainsKey($ip)) {
+                $attempt = $registerAttempts[$ip]
+                if (($now - $attempt.lastAttempt) -lt 600000 -and $attempt.count -ge 3) {
+                    $res.StatusCode = 429
+                    $res.ContentType = "application/json; charset=utf-8"
+                    $msgObj = @{ success = $false; message = "تنبيه أمان: تم تجاوز الحد المسموح للتسجيل من هذا الجهاز. يرجى الانتظار 10 دقائق." }
+                    $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $msgObj))
+                    $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                    $res.Close()
+                    continue
+                }
+            }
+            
+            if ($registerAttempts.ContainsKey($ip)) {
+                $registerAttempts[$ip].count++
+                $registerAttempts[$ip].lastAttempt = $now
+            } else {
+                $registerAttempts[$ip] = @{ count = 1; lastAttempt = $now }
+            }
+
             $body = $reader.ReadToEnd()
             $regInfo = ConvertFrom-Json $body
             
@@ -807,6 +935,26 @@ while ($listener.IsListening) {
         }
         
         elseif ($path -eq "/api/auth/reset-password" -and $req.HttpMethod -eq "POST") {
+            if ($resetAttempts.ContainsKey($ip)) {
+                $attempt = $resetAttempts[$ip]
+                if (($now - $attempt.lastAttempt) -lt 600000 -and $attempt.count -ge 3) {
+                    $res.StatusCode = 429
+                    $res.ContentType = "application/json; charset=utf-8"
+                    $msgObj = @{ success = $false; message = "تنبيه أمان: تم تجاوز الحد المسموح لمحاولات إعادة التعيين. يرجى الانتظار 10 دقائق." }
+                    $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $msgObj))
+                    $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                    $res.Close()
+                    continue
+                }
+            }
+            
+            if ($resetAttempts.ContainsKey($ip)) {
+                $resetAttempts[$ip].count++
+                $resetAttempts[$ip].lastAttempt = $now
+            } else {
+                $resetAttempts[$ip] = @{ count = 1; lastAttempt = $now }
+            }
+
             $body = $reader.ReadToEnd()
             $resetInfo = ConvertFrom-Json $body
             
@@ -936,6 +1084,100 @@ while ($listener.IsListening) {
                 $resData = @{ success = $true; data = $newSave }
                 $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
                 $res.OutputStream.Write($bytes, 0, $bytes.Length)
+            }
+        }
+        
+        elseif ($path -eq "/api/roms/upload" -and $req.HttpMethod -eq "POST") {
+            $authHeader = $req.Headers["Authorization"]
+            $token = ""
+            if ($authHeader -and $authHeader.StartsWith("Bearer ")) { $token = $authHeader.Substring(7) }
+            
+            if (!$activeSessions.ContainsKey($token) -or $now -gt $activeSessions[$token].expiresAt) {
+                $res.StatusCode = 401
+                $res.ContentType = "application/json; charset=utf-8"
+                $resData = @{ success = $false; message = "غير مصرح: انتهت صلاحية الجلسة!" }
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                $res.OutputStream.Write($bytes, 0, $bytes.Length)
+            } else {
+                $username = $activeSessions[$token].username
+                if ($username -eq "guest") {
+                    $res.StatusCode = 403
+                    $res.ContentType = "application/json; charset=utf-8"
+                    $resData = @{ success = $false; message = "عذراً: الحساب التجريبي محدود الصلاحية! يرجى تسجيل حساب رسمي للاستفادة من كامل المزايا وحفظ البيانات." }
+                    $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                    $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                } else {
+                    $len = $req.ContentLength64
+                    if ($len -le 0 -or $len -gt 838860800) {
+                        $res.StatusCode = 400
+                        $res.ContentType = "application/json; charset=utf-8"
+                        $resData = @{ success = $false; message = "ملف اللعبة كبير جداً أو غير صالح! الحد الأقصى المسموح به هو 800 ميجابايت." }
+                        $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                        $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                    } else {
+                        $buffer = [byte[]]::new($len)
+                        $read = 0
+                        while ($read -lt $len) {
+                            $readBytes = $req.InputStream.Read($buffer, $read, $len - $read)
+                            if ($readBytes -le 0) { break }
+                            $read += $readBytes
+                        }
+                        
+                        $filename = ""
+                        $fileData = $null
+                        
+                        if ([MultipartParser]::Parse($buffer, $req.ContentType, [ref]$filename, [ref]$fileData)) {
+                            $baseName = [System.IO.Path]::GetFileName($filename)
+                            $cleanName = $baseName -replace '[^a-zA-Z0-9.\-_]', ''
+                            
+                            $ext = [System.IO.Path]::GetExtension($cleanName).ToLower()
+                            $allowedExtensions = @('.bin', '.cue', '.iso', '.img', '.zip')
+                            
+                            if ($ext -notin $allowedExtensions) {
+                                $res.StatusCode = 400
+                                $res.ContentType = "application/json; charset=utf-8"
+                                $resData = @{ success = $false; message = "صيغة ملف غير صالحة! يسمح فقط بصيغ .bin, .cue, .iso, .img, .zip" }
+                                $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                                $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                            } else {
+                                $uniqueSuffix = [DateTimeOffset]::Now.ToUnixTimeMilliseconds().ToString() + "-" + (New-Guid).ToString("N").Substring(0, 8)
+                                $finalFilename = $uniqueSuffix + "-" + $cleanName
+                                $destPath = Join-Path $uploadsDir $finalFilename
+                                
+                                [System.IO.File]::WriteAllBytes($destPath, $fileData)
+                                
+                                $db = Load-DB
+                                $newRom = @{
+                                    id = "rom_" + $now
+                                    name = $baseName
+                                    size = $fileData.Length
+                                    filename = $finalFilename
+                                    uploadDate = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+                                    console = "PS1"
+                                    preloaded = $false
+                                }
+                                
+                                $romsList = [System.Collections.ArrayList]::new()
+                                foreach ($r in $db.roms) { $romsList.Add($r) | Out-Null }
+                                $romsList.Add($newRom) | Out-Null
+                                $db.roms = $romsList.ToArray()
+                                
+                                Save-DB $db
+                                
+                                $res.ContentType = "application/json; charset=utf-8"
+                                $resData = @{ success = $true; data = $newRom }
+                                $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                                $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                            }
+                        } else {
+                            $res.StatusCode = 400
+                            $res.ContentType = "application/json; charset=utf-8"
+                            $resData = @{ success = $false; message = "فشل تحميل الملف: صيغة طلب غير صالحة." }
+                            $bytes = [System.Text.Encoding]::UTF8.GetBytes((ConvertTo-Json $resData))
+                            $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                        }
+                    }
+                }
             }
         }
         
@@ -1607,7 +1849,7 @@ while ($listener.IsListening) {
         
         # Catch-all
         else {
-            if ($res.StatusCode -eq 0) { $res.StatusCode = 404 }
+            $res.StatusCode = 404
         }
         
     } catch {

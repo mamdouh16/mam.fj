@@ -764,7 +764,8 @@ app.post('/api/admin/local-apps/delete', validateSession, validateAdminSession, 
 
 // Stream a ROM file to emulator core (requires active secure cookies/headers or parameters)
 app.get('/roms/:filename', (req, res) => {
-  const filePath = path.join(UPLOADS_DIR, req.params.filename);
+  const safeFilename = path.basename(req.params.filename);
+  const filePath = path.join(UPLOADS_DIR, safeFilename);
   if (fs.existsSync(filePath)) {
     res.sendFile(filePath);
   } else {
